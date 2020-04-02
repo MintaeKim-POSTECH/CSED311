@@ -1,0 +1,209 @@
+C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_signsub.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_signsub.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module adder1
+-- Compiling module sign_adder16
+-- Compiling module bit_not16
+-- Compiling module complement_16
+-- Compiling module sign_subtractor16
+
+Top level modules:
+	sign_subtractor16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/alu_tb_f.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/alu_tb_f.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module DeMUX_4to16
+-- Compiling module identity16
+-- Compiling module bit_and16
+-- Compiling module bit_or16
+-- Compiling module bit_nand16
+-- Compiling module bit_nor16
+-- Compiling module bit_xor16
+-- Compiling module bit_xnor16
+-- Compiling module logic_left16
+-- Compiling module logic_right16
+-- Compiling module arith_left16
+-- Compiling module arith_right16
+-- Compiling module adder1
+-- Compiling module sign_adder16
+-- Compiling module bit_not16
+-- Compiling module complement_16
+-- Compiling module zero
+-- Compiling module ALU
+-- Compiling module ALU_tb
+
+Top level modules:
+	ALU_tb
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_or.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_or.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_or16
+
+Top level modules:
+	bit_or16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_xor.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_xor.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_xor16
+
+Top level modules:
+	bit_xor16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_l_arith.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_l_arith.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module arith_left16
+
+Top level modules:
+	arith_left16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/alu_tb.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/alu_tb.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module DeMUX_4to16
+-- Compiling module identity16
+-- Compiling module bit_and16
+-- Compiling module bit_or16
+-- Compiling module bit_nand16
+-- Compiling module bit_nor16
+-- Compiling module bit_xor16
+-- Compiling module bit_xnor16
+-- Compiling module logic_left16
+-- Compiling module logic_right16
+-- Compiling module arith_left16
+-- Compiling module arith_right16
+-- Compiling module adder1
+-- Compiling module sign_adder16
+-- Compiling module bit_not16
+-- Compiling module complement_16
+-- Compiling module zero
+-- Compiling module ALU
+-- Compiling module ALU_tb
+
+Top level modules:
+	ALU_tb
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_and.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_and.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_and16
+
+Top level modules:
+	bit_and16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_2comp.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_2comp.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module adder1
+-- Compiling module sign_adder16
+-- Compiling module bit_not16
+-- Compiling module complement_16
+
+Top level modules:
+	complement_16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_l_log.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_l_log.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module logic_left16
+
+Top level modules:
+	logic_left16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_alu.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_alu.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module DeMUX_4to16
+-- Compiling module identity16
+-- Compiling module bit_and16
+-- Compiling module bit_or16
+-- Compiling module bit_nand16
+-- Compiling module bit_nor16
+-- Compiling module bit_xor16
+-- Compiling module bit_xnor16
+-- Compiling module logic_left16
+-- Compiling module logic_right16
+-- Compiling module arith_left16
+-- Compiling module arith_right16
+-- Compiling module adder1
+-- Compiling module sign_adder16
+-- Compiling module bit_not16
+-- Compiling module complement_16
+-- Compiling module zero
+-- Compiling module ALU
+
+Top level modules:
+	ALU
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_demux16.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_demux16.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module DeMUX_4to16
+
+Top level modules:
+	DeMUX_4to16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_signadd.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_signadd.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module adder1
+-- Compiling module sign_adder16
+
+Top level modules:
+	sign_adder16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_nor.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_nor.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_nor16
+
+Top level modules:
+	bit_nor16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_xnor.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_xnor.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_xnor16
+
+Top level modules:
+	bit_xnor16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_r_arith.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_r_arith.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module arith_right16
+
+Top level modules:
+	arith_right16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_not.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_not.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_not16
+
+Top level modules:
+	bit_not16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_nand.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_bit_nand.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module bit_nand16
+
+Top level modules:
+	bit_nand16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_zero.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_zero.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module zero
+
+Top level modules:
+	zero
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_adder.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_adder.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module adder1
+
+Top level modules:
+	adder1
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_iden.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_iden.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module identity16
+
+Top level modules:
+	identity16
+
+} {} {}} C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_r_log.v {1 {vlog -work work -stats=none C:/Modeltech_pe_edu_10.4a/projects/lab1/lab1_shift_r_log.v
+Model Technology ModelSim PE Student Edition vlog 10.4a Compiler 2015.03 Apr  7 2015
+-- Compiling module logic_right16
+
+Top level modules:
+	logic_right16
+
+} {} {}}

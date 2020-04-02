@@ -1,0 +1,78 @@
+`timescale 1ns / 100ps
+
+`define	NumBits	16
+
+`include "lab1_demux16.v"
+`include "lab1_iden.v"
+`include "lab1_bit_and.v"
+`include "lab1_bit_or.v"
+`include "lab1_bit_nand.v"
+`include "lab1_bit_nor.v"
+`include "lab1_bit_xor.v"
+`include "lab1_bit_xnor.v"
+`include "lab1_shift_l_log.v"
+`include "lab1_shift_r_log.v"
+`include "lab1_shift_l_arith.v"
+`include "lab1_shift_r_arith.v"
+`include "lab1_2comp.v"
+`include "lab1_zero.v"
+
+module ALU (A, B, FuncCode, C, OverflowFlag);
+	input [`NumBits-1:0] A;
+	input [`NumBits-1:0] B;
+	input [3:0] FuncCode;
+	output [`NumBits-1:0] C;
+	output OverflowFlag;
+
+	reg [`NumBits-1:0] C;
+	reg OverflowFlag;
+
+	// You can declare any variables as needed.
+	/*
+		YOUR VARIABLE DECLARATION...
+	*/
+	
+	wire [15:0] DeMUX_dataline;
+
+	// Use DeMUX to fetch data line
+	DeMUX_4to16 demux (DeMUX_dataline, FuncCode);
+
+	// Calculate I0 ~ I15 by using specific modules
+	wire [15:0] r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15;
+	wire [15:0] o;
+
+	initial begin
+		C = 0;
+		OverflowFlag = 0;
+
+		// Use OR module to get final result
+	end   	
+
+	// TODO: You should implement the functionality of ALU!
+	// (HINT: Use 'always @(...) begin ... end')
+	/*
+		YOUR ALU FUNCTIONALITY IMPLEMENTATION...
+	*/
+	always @(*) begin
+		C = (r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 | r15);
+		OverflowFlag = (o[0] | o[1] | o[2] | o[3] | o[4] | o[5] | o[6] | o[7] | o[8] | o[9] | o[10] | o[11] | o[12] | o[13] | o[14] | o[15]);
+	end
+
+	sign_adder16 op_0 (r0, o[0], A, B, DeMUX_dataline[0]);
+	sign_subtractor16 op_1 (r1, o[1], A, B, DeMUX_dataline[1]);
+	identity16 op_2 (r2, o[2], A, DeMUX_dataline[2]);
+	bit_not16 op_3 (r3, o[3], A, DeMUX_dataline[3]);
+	bit_and16 op_4 (r4, o[4], A, B, DeMUX_dataline[4]);
+	bit_or16 op_5 (r5, o[5], A, B, DeMUX_dataline[5]);
+	bit_nand16 op_6 (r6, o[6], A, B, DeMUX_dataline[6]);
+	bit_nor16 op_7 (r7, o[7], A, B, DeMUX_dataline[7]);
+	bit_xor16 op_8 (r8, o[8], A, B, DeMUX_dataline[8]);
+	bit_xnor16 op_9 (r9, o[9], A, B, DeMUX_dataline[9]);
+	logic_left16 op_10 (r10, o[10], A, DeMUX_dataline[10]);
+	logic_right16 op_11 (r11, o[11], A, DeMUX_dataline[11]);
+	arith_left16 op_12 (r12, o[12], A, DeMUX_dataline[12]);	
+	arith_right16 op_13 (r13, o[13], A, DeMUX_dataline[13]);	
+	complement_16 op_14 (r14, o[14], A, DeMUX_dataline[14]);
+	zero op_15 (r15, o[15]);
+
+endmodule
