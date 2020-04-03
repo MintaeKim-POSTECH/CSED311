@@ -67,10 +67,14 @@ module vending_machine (
 	reg [`kTotalBits-1:0] input_total, output_total, return_total;
 	reg [31:0] waitTime;
 
+	reg CS, NS;
+
 	// initiate values
 	initial begin
 		// TODO: initiate values
-
+		waitTime = `kwaitTime;
+		CS = 0;
+		NS = 0;
 	end
 
 	
@@ -78,11 +82,21 @@ module vending_machine (
 	always @(*) begin
 		// TODO: current_total_nxt
 		// You don't have to worry about concurrent activations in each input vector (or array).
-		
+
 		// Calculate the next current_total state.
-		
-		// You may add more next states.
-		
+		if (CS == 0) begin // State 1
+			if (i_input_coin == 1) begin
+				NS = 1;
+			end
+		end
+		else begin // State 2
+			for (i = 0; i < `kNumCoins; i++) begin
+				if (i_input_coin[i] == 1) begin
+					current_total_nxt += kkCoinValue[i];
+				end
+			end
+		end
+				
 	end
 
 	
@@ -90,10 +104,20 @@ module vending_machine (
 	// Combinational logic for the outputs
 	always @(*) begin
 		// TODO: o_available_item
+		// TODO: NS = ?
 
 		// TODO: o_output_item
 
 		// TODO: o_return_coin
+		for (j = 0; j < `kNumItems; j++) begin
+			if (i_select_item[j] == 1) begin
+				current_total_nxt -= kkItemPrice[j];
+			end
+		end
+		if (i_trigger_return == 1) begin
+			// TODO: Return
+			NS = 0;
+		end
 
 	end
  
@@ -107,7 +131,14 @@ module vending_machine (
 		end
 		else begin
 			// TODO: update all states.
-
+			if (CS == 0) begin
+				waitTime <= `kwaitTime;
+			end
+			else begin
+				waitTime <= waitTime - 1;
+			end
+			CS <= NS;
+			current_total <= current_total_nxt;
 		end
 	end
 
