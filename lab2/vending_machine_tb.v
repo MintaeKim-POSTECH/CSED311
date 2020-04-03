@@ -136,7 +136,7 @@ endtask
 task Insert500CoinTest;
 	begin
 		reset_n = 1;
-		#50 reset_n = 0;
+		#100 reset_n = 0;
 		#100 reset_n = 1;
 		Current = 0;
 		Insert500Coin(); // 500
@@ -152,7 +152,7 @@ endtask
 task Insert1000CoinTest;
 	begin
 		reset_n = 1;
-		#50 reset_n = 0;
+		#100 reset_n = 0;
 		#100 reset_n = 1;
 		Current = 0;
 		Insert1000Coin(); // 1000
