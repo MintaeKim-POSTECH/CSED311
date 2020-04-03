@@ -72,9 +72,15 @@ module vending_machine (
 	// initiate values
 	initial begin
 		// TODO: initiate values
-		waitTime = `kwaitTime;
+		waitTime = `kWaitTime;
 		CS = 0;
 		NS = 0;
+		current_total = 0;
+		current_total_nxt = 0;
+		o_available_item = 0;
+		o_output_item = 0;
+		o_return_coin = 0;
+		return_total = 0;
 	end
 
 	
@@ -85,58 +91,78 @@ module vending_machine (
 
 		// Calculate the next current_total state.
 		if (CS == 0) begin // State 1
-			if (i_input_coin == 1) begin
-				NS = 1;
-			end
-		end
-		else begin // State 2
-			for (i = 0; i < `kNumCoins; i++) begin
+			waitTime = `kWaitTime;
+			for (i = 0; i < `kNumCoins; i = i+1) begin
 				if (i_input_coin[i] == 1) begin
-					current_total_nxt += kkCoinValue[i];
+					current_total_nxt = current_total_nxt + kkCoinValue[i];
+					waitTime = `kWaitTime;
+					NS = 1;
 				end
 			end
 		end
-				
+		else begin // State 2
+			if (i_trigger_return == 1 || waitTime <= 0) begin
+				current_total_nxt=0;
+				NS = 0;
+			end
+			for (i = 0; i < `kNumCoins; i = i+1) begin
+				if (i_input_coin[i] == 1) begin
+					current_total_nxt = current_total_nxt + kkCoinValue[i];
+					waitTime = `kWaitTime;
+				end
+			end
+			for (j = 0; j < `kNumItems; j = j+1) begin
+				if (i_select_item[j] == 1) begin
+					if (current_total>=kkItemPrice[j]) begin
+						current_total_nxt = current_total_nxt - kkItemPrice[j];
+						waitTime = `kWaitTime;
+					end
+				end
+			end
+		end		
 	end
 
-	
-	
 	// Combinational logic for the outputs
 	always @(*) begin
 		// TODO: o_available_item
-		// TODO: NS = ?
-
-		// TODO: o_output_item
-
-		// TODO: o_return_coin
-		for (j = 0; j < `kNumItems; j++) begin
-			if (i_select_item[j] == 1) begin
-				current_total_nxt -= kkItemPrice[j];
+		if (CS == 1) begin
+			for (i = 0; i < `kNumItems; i = i+1) begin
+				if (kkItemPrice[i] <= current_total) begin
+					o_available_item[i] = 1;
+				end
 			end
 		end
-		if (i_trigger_return == 1) begin
-			// TODO: Return
-			NS = 0;
+
+		// TODO: o_output_item
+		for (j = 0; j < `kNumItems; j = j+1) begin
+			if (i_select_item[j] == 1 && current_total>=kkItemPrice[j]) begin
+				o_output_item[j] = 1;
+			end
 		end
 
+		// TODO: o_return_coin
+		if (i_trigger_return == 1 || waitTime <= 0) begin
+			// TODO: Return
+			return_total=current_total;
+			for(i=0; i<`kNumCoins;i = i+1)begin
+				o_return_coin[i]= return_total/kkCoinValue[i];
+				return_total=return_total-o_return_coin[i]*kkCoinValue[i];
+			end
+		end
 	end
- 
 	
 	
 	// Sequential circuit to reset or update the states
 	always @(posedge clk) begin
 		if (!reset_n) begin
 			// TODO: reset all states.
-
+			CS <= 0;
+			current_total <= 0;
+			current_total_nxt <= 0;
 		end
 		else begin
 			// TODO: update all states.
-			if (CS == 0) begin
-				waitTime <= `kwaitTime;
-			end
-			else begin
-				waitTime <= waitTime - 1;
-			end
+			waitTime <= waitTime - 1;
 			CS <= NS;
 			current_total <= current_total_nxt;
 		end
