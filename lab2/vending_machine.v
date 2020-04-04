@@ -66,7 +66,9 @@ module vending_machine (
 	// Variables. You may add more your own registers.
 	reg [`kTotalBits-1:0] input_total, output_total, return_total;
 	reg [31:0] waitTime;
-
+	
+	reg ret;
+	
 	reg CS, NS;
 
 	// initiate values
@@ -81,54 +83,62 @@ module vending_machine (
 		o_output_item = 0;
 		o_return_coin = 0;
 		return_total = 0;
+
+		ret=0;
 	end
 
 	
 	// Combinational logic for the next states
-	always @(*) begin
+	always @(i_input_coin,i_select_item,i_trigger_return) begin
 		// TODO: current_total_nxt
 		// You don't have to worry about concurrent activations in each input vector (or array).
 
 		// Calculate the next current_total state.
-		if (CS == 0) begin // State 1
-			waitTime = `kWaitTime;
-			for (i = 0; i < `kNumCoins; i = i+1) begin
-				if (i_input_coin[i] == 1) begin
-					current_total_nxt = current_total_nxt + kkCoinValue[i];
-					waitTime = `kWaitTime;
-					NS = 1;
-				end
-			end
-		end
-		else begin // State 2
-			if (i_trigger_return == 1 || waitTime <= 0) begin
-				current_total_nxt=0;
-				NS = 0;
-			end
-			for (i = 0; i < `kNumCoins; i = i+1) begin
-				if (i_input_coin[i] == 1) begin
-					current_total_nxt = current_total_nxt + kkCoinValue[i];
-					waitTime = `kWaitTime;
-				end
-			end
-			for (j = 0; j < `kNumItems; j = j+1) begin
-				if (i_select_item[j] == 1) begin
-					if (current_total>=kkItemPrice[j]) begin
-						current_total_nxt = current_total_nxt - kkItemPrice[j];
+		if(ret==0)begin
+			if (CS == 0) begin // State 1
+				waitTime = `kWaitTime;
+				for (i = 0; i < `kNumCoins; i = i+1) begin
+					if (i_input_coin[i] == 1) begin
+						current_total_nxt = current_total + kkCoinValue[i];
 						waitTime = `kWaitTime;
+						NS = 1;
 					end
 				end
 			end
-		end		
+			else begin // State 2
+				if (i_trigger_return == 1) begin
+					current_total_nxt=0;
+					NS = 0;
+				end
+				for (i = 0; i < `kNumCoins; i = i+1) begin
+					if (i_input_coin[i] == 1) begin
+						current_total_nxt = current_total + kkCoinValue[i];
+						waitTime = `kWaitTime;
+					end
+				end
+				for (j = 0; j < `kNumItems; j = j+1) begin
+					if (i_select_item[j] == 1) begin
+						if (current_total>=kkItemPrice[j]) begin
+							current_total_nxt = current_total - kkItemPrice[j];
+							waitTime = `kWaitTime;
+						end
+					end
+				end
+			end
+		end
 	end
 
 	// Combinational logic for the outputs
-	always @(*) begin
+	always @(CS,NS,i_input_coin,i_select_item,i_trigger_return) begin
 		// TODO: o_available_item
+		
 		if (CS == 1) begin
 			for (i = 0; i < `kNumItems; i = i+1) begin
 				if (kkItemPrice[i] <= current_total) begin
 					o_available_item[i] = 1;
+				end
+				else begin
+					o_available_item[i] = 0;
 				end
 			end
 		end
@@ -138,22 +148,33 @@ module vending_machine (
 			if (i_select_item[j] == 1 && current_total>=kkItemPrice[j]) begin
 				o_output_item[j] = 1;
 			end
+			else begin
+				o_output_item[j] = 0;
+			end
 		end
 
 		// TODO: o_return_coin
-		if (i_trigger_return == 1 || waitTime <= 0) begin
+		if (i_trigger_return == 1 ||waitTime<=0||ret==1) begin
 			// TODO: Return
-			return_total=current_total;
 			for(i=0; i<`kNumCoins;i = i+1)begin
-				o_return_coin[i]= return_total/kkCoinValue[i];
-				return_total=return_total-o_return_coin[i]*kkCoinValue[i];
+				o_return_coin[i]=0;
+			end
+			for(i=0; i<`kNumCoins;i = i+1)begin
+				if(return_total>kkCoinValue[i]&&o_return_coin==3'b000)begin
+					o_return_coin[i]=1;
+				end
+			end
+			
+			if(return_total<=0)begin
+				ret=0;
+				waitTime=`kWaitTime;
 			end
 		end
 	end
 	
 	
 	// Sequential circuit to reset or update the states
-	always @(posedge clk) begin
+	always @(posedge clk,negedge reset_n) begin
 		if (!reset_n) begin
 			// TODO: reset all states.
 			CS <= 0;
@@ -163,8 +184,17 @@ module vending_machine (
 		else begin
 			// TODO: update all states.
 			waitTime <= waitTime - 1;
-			CS <= NS;
-			current_total <= current_total_nxt;
+			return_total<=current_total;
+			if(waitTime<=0)begin
+				current_total_nxt<=0;
+				NS <= 0;
+				ret<=1;
+			end
+			else begin
+				CS <= NS;
+				current_total <= current_total_nxt;
+			end
+
 		end
 	end
 
