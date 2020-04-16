@@ -8,7 +8,7 @@ module mux(control, i1, i2, result);
 	output reg [`WORD_SIZE-1:0] result;
 
 	always @(*) begin
-		if (control == 0) result = i1;
+		if (control == 1) result = i1;
 		else result = i2;
 	end
 endmodule
