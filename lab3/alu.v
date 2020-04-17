@@ -7,6 +7,7 @@ module alu(opcode, funcode, A, B, result, bcond);
 	input [`WORD_SIZE-1:0] B;
 
 	output reg [`WORD_SIZE-1:0] result;
+	output reg bcond;
 
 	always @(*) begin
 		// Result determination
@@ -33,11 +34,11 @@ module alu(opcode, funcode, A, B, result, bcond);
 
 		// Branch Condition Determination
 		case (opcode)
-			0: bcond = ((A == B) ? 0 : 1)
-			1: bcond = ((A == B) ? 1 : 0)
-			2: bcond = ((A > 0) ? 1 : 0)
-			3: bcond = ((A < 0) ? 1 : 0)
-			default: bcond = 0
+			0: bcond = ((A == B) ? 0 : 1);
+			1: bcond = ((A == B) ? 1 : 0);
+			2: bcond = ((A > 0) ? 1 : 0);
+			3: bcond = ((A < 0) ? 1 : 0);
+			default: bcond = 0;
 		endcase
 	end
 endmodule
