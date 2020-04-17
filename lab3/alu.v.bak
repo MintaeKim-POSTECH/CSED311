@@ -2,7 +2,7 @@
 
 module alu(opcode, funcode, A, B, result, bcond);
 	input [3:0] opcode;
-	input [5:0] funcode;
+	input [3:0] funcode;
 	input [`WORD_SIZE-1:0] A;
 	input [`WORD_SIZE-1:0] B;
 
