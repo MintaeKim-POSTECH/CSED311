@@ -6,6 +6,24 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 	reg isJAL, isJRL, isJPR, isLoad, isStore;
 
 	reg [3:0] opcode;
+
+	initial begin
+		isJAL = 0;
+		isJRL = 0;
+		isJPR = 0;
+		isLoad = 0;
+		isStore = 0;
+		RegDest = 0;
+		MemRead = 0;
+		MemtoReg = 0;
+		MemWrite = 0;
+		ALUSrc = 0;
+		RegWrite = 0;
+		Reg2Save = 0;
+		PCSrc1 = 0;
+		PCSrc2 = 0;
+	end
+
 	always @(*) begin
 		opcode=inst[15:12];
 		if(opcode<=8)begin

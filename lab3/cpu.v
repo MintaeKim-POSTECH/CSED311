@@ -93,14 +93,13 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [`WORD_SIZE-1:0] branch_addr;
 	adder add_b (PC_wire_cur, imm_extend, branch_addr);
 	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_wire_next);
+
+
+	reg State;
 	
+
 	initial begin // Initial Logic
 		assign data_reg = 16'bz;
-		assign CS = 0;
-		assign NS = 0;
-
-		assign readM = 0;
-		assign writeM = 0;
 	end
 
 	always @(posedge inputReady) begin // ID & EX

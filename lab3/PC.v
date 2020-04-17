@@ -5,7 +5,7 @@ module PC (clk, PC_next, PC_cur);
 	output reg [`WORD_SIZE-1:0] PC_cur;
 
 	initial begin	
-		PC_cur = 0;
+		PC_cur = -1;
 	end
 	always @(posedge clk) begin
 		PC_cur <= PC_next;
