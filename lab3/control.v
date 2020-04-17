@@ -1,25 +1,16 @@
 `include "opcodes.v"
 
-module control(inst, isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, isJPR);
-	input [`WORD_SIZE-1:0]instruction;
-	output reg isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, isJPR;
+module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
+	input [`WORD_SIZE-1:0] inst;
+	output reg RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
+	reg isJAL, isJRL, isJPR, isLoad, isStore;
 
-	initial begin
-		isRtype = 0;
-		isLoad = 0;
-		isJtype = 0;
-		isStore = 0;
-		isImmCal = 0;
-		isJAL = 0;
-		isJRL = 0;
-		isJPR = 0;
-	end
-
-	reg [3:0]opcode;
+	reg [3:0] opcode;
 	always @(*) begin
 		opcode=inst[15:12];
-		if(opcode<8)begin
-			isImmCal = 1;
+		if(opcode<=8)begin
+			// ALUSrc: Using Immediate Values?
+			ALUSrc = 1;
 			if(opcode==7)begin
 				isLoad = 1;
 			end
@@ -27,15 +18,17 @@ module control(inst, isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, 
 				isStore = 1;
 			end
 		end
+		// PCSrc1: isJtype?
 		else if(opcode==9)begin
-			isJype = 1;
+			PCSrc1 = 1;
 		end
 		else if(opcode==10)begin
-			isJype = 1;
+			PCSrc1 = 1;
 			isJAL = 1;
 		end
 		else if (opcode==15)begin
-			isRtype = 1;
+			// RegDest: R Type (rd) vs I Type (rt)
+			RegDest = 1; 
 			if(inst[5:0]==25)begin
 				isJPR = 1;
 			end
@@ -43,5 +36,23 @@ module control(inst, isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, 
 				isJRL = 1;
 			end
 		end
+
+		// RegWrite
+		if (isStore == 1) RegWrite = 0;
+		else if (opcode >= 0 && opcode <= 3) RegWrite = 0;
+		else RegWrite = 1;
+
+		// Reg2Save: Instructions that Saves PC in $2 / (isJAL || isJRL)
+		Reg2Save = (isJAL || isJRL);
+
+		// PCSrc2: (isJRL || isJPR)
+		PCSrc2 = (isJRL || isJPR);
+
+		// MemtoReg: isLoad
+		MemtoReg = isLoad;
+		// MemWrite: isStore
+		MemWrite = isStore;
+		// MemRead: isLoad
+		MemRead = isLoad;
 	end
 endmodule

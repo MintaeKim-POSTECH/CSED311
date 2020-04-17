@@ -7,16 +7,19 @@ module register(readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, re
 	output reg [`WORD_SIZE-1:0] readData1, readData2;
 
 	reg [`WORD_SIZE-1:0] register [`NUM_REGS-1:0];
+	reg i;
+	initial begin
+		for (i = 0; i < `NUM_REGS; i = i+1) register[i] = 0;
+	end
 
 	always @(*) begin // Combinational Logic	
 		readData1 = register[readReg1];
 		readData2 = register[readReg2];
+		if (RegWrite == 1) begin
+			register[writeReg] = writeBack;
+		end
 	end
 
-	always @(*) begin // Write-Back
-		if(RegWrite==1)begin
-			
-		end
-		register[writeReg] <= writeBack;
+	always @(posedge RegWrite) begin // IF NEEDED
 	end
 endmodule 

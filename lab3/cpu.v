@@ -18,7 +18,6 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	input reset_n;									
 	input clk;
 
-	reg [`WORD_SIZE-1:0] address;
 	reg [`WORD_SIZE-1:0] data_reg;
 	reg readM, writeM;
 	
@@ -50,51 +49,50 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	adder add_1 (PC_wire_cur, 1, PC_wire_p1);
 	
 	// Control Unit
-	wire isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, isJPR;
-	control control_unit(data_wire,isRtype, isLoad, isJtype, isStore, isImmCal, isJAL, isJRL, isJPR);
+	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
+	control control_unit(data_wire, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
 
 	// Register
 	wire [1:0] wb_reg_id;
 	wire [1:0] rt_vs_rd;
-	mux mux_wb_target (isRtype, rt, rd, rt_vs_rd);
 	
 	// ALU: R Type
 	wire [`WORD_SIZE-1:0] wd_wire;
-	
-	register reg_cpu (rs_id, rt_id, wb_reg_id, wd_wire, (not isStore), rs, rt);
-	
+	register reg_cpu (rs_id, rt_id, wb_reg_id, wd_wire, RegWrite, rs, rt);
 	alu_control alu_con (data_wire, opcode, funcode);
 	
 	// I Type
 	wire [`WORD_SIZE-1:0] B;
 	imm_generator imm_gen (imm, imm_extend);
-	mux mux_imm (isImmCal, rt, imm_extend, B);
+	mux mux_imm (ALUSrc, rt, imm_extend, B);
 
 	wire [`WORD_SIZE-1:0] alu_res;
 	wire [`WORD_SIZE-1:0] alu_mem_res;
 	
-	wire bcond;
-	alu alu_1 (opcode, funcode, rs, B, alu_res, bcond);
-	mux mux_load (isLoad, alu_res, data_wire, alu_mem_res);
+	wire PCSrc3_bcond;
+	alu alu_1 (opcode, funcode, rs, B, alu_res, PCSrc3_bcond);
+	mux mux_load (MemtoReg, alu_res, data_wire, alu_mem_res);
 
 	// J Type : JMP & JAL
 	wire [`WORD_SIZE-1:0] jmp_addr;
 	wire [`WORD_SIZE-1:0] PC_wire_jtype;
 	jmp_control jmp_addr_calc (PC_wire_cur, target, jmp_addr);
-	mux mux_j (isJtype, PC_wire_p1, jmp_addr, PC_wire_jtype);
+	mux mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
 
 	// J Type: JAL & JRL
-	mux mux_jal_wb ((isJAL || isJRL), rt_vs_rd, 2, wb_reg_id);
-	mux mux_jal_wd ((isJAL || isJRL), alu_mem_res, PC_wire_cur, wd_wire);
+	mux mux_wb_target (RegDest, rt, rd, rt_vs_rd);
+	mux mux_jal_wb (Reg2Save, rt_vs_rd, 2, wb_reg_id);
+
+	mux mux_jal_wd (Reg2Save, alu_mem_res, PC_wire_cur, wd_wire);
 
 	// I Type: JRL & JPR
 	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
-	mux mux_jrl ((isJRL || isJPR), PC_wire_jtype, rs, PC_wire_itype_final);
+	mux mux_jrl (PCSrc2, PC_wire_jtype, rs, PC_wire_itype_final);
 	
 	// I Type: Branch
 	wire [`WORD_SIZE-1:0] branch_addr;
 	adder add_b (PC_wire_cur, imm_extend, branch_addr);
-	mux mux_final (bcond, PC_wire_itype_final, branch_addr, PC_wire_next);
+	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_wire_next);
 	
 	initial begin // Initial Logic
 		assign data_reg = 16'bz;
@@ -105,44 +103,17 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		assign writeM = 0;
 	end
 
-	always @(*) begin // Calculation: Combinational Logic
-		if (CS == 1) begin // TODO: ID & EX
-		end
-		else begin // TODO: MEM (Memory Access Stage)
-		end
-	end
-
 	always @(posedge inputReady) begin // ID & EX
-		readM <= 0;		
-		CS <= NS;
 	end
 	always @(posedge ackOutput) begin // Write Back
-		CS <= 0;
-		NS <= 0;
-		readM <= 0;
-		writeM <= 0;
 	end
-
 	
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
-		if (CS == 0 && data == 16'bz) begin
-			readM <= 1;
-			NS <= 1;
-		end
 	end
 	always @(negedge clk) begin // Clock II: MEM (Memory Access Stage)
-		if (NS == 2) begin // Store
-			readM <= 0;
-			writeM <= 1;
-		end
-		else if(NS == 3) begin // Load
-			readM <= 1;
-			writeM <= 0;
-		end
-	end
-	
+	end	
 
 	always @(negedge reset_n) begin // Reset Activated
-
-	end																																				  
+	end	
+																																			  
 endmodule							  																		  
