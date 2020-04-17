@@ -45,7 +45,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [`WORD_SIZE-1:0] PC_wire_next, PC_wire_p1;
 	PC pc_cpu (clk, PC_wire_next, PC_wire_cur);
 
-	assign address = PC_wire;
+	assign address = PC_wire_cur;
 
 	adder add_1 (PC_wire_cur, 1, PC_wire_p1);
 	
@@ -91,7 +91,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	mux mux_jrl ((isJRL or isJPR), PC_wire_jtype, rs, PC_wire_itype_final);
 	
 	// I Type: Branch
-	wire [`WORD_SIZE-1:0] branch_addr
+	wire [`WORD_SIZE-1:0] branch_addr;
 	adder add_b (PC_wire_cur, imm_extend, branch_addr);
 	mux mux_final (bcond, PC_wire_itype_final, branch_addr, PC_wire_next);
 	
