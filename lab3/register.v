@@ -1,6 +1,7 @@
 `include "opcodes.v"
 
-module register(readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, readData2);
+module register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, readData2);
+	input reset_n;
 	input [1:0] readReg1, readReg2, writeReg; // NUM_REG : 4
 	input RegWrite; // If needed
 	input [`WORD_SIZE-1:0] writeBack;
@@ -22,4 +23,8 @@ module register(readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, re
 
 	always @(posedge RegWrite) begin // IF NEEDED
 	end
+
+	always @(negedge reset_n) begin // Reset Activated
+	end
+
 endmodule 
