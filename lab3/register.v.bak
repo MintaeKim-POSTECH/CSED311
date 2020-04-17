@@ -13,10 +13,7 @@ module register(readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, re
 		readData2 = register[readReg2];
 	end
 
-	always @(*) begin // Write-Back
-		if(RegWrite==1)begin
-			
-		end
+	always @(posedge RegWrite) begin // Write-Back
 		register[writeReg] <= writeBack;
 	end
 endmodule 

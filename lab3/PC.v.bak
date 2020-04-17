@@ -1,4 +1,4 @@
-`include "opcodes.v"
+`include "opcode.v"
 module PC (clk, PC_next, PC_cur);
 	input clk;
 	input [`WORD_SIZE-1:0] PC_next;
