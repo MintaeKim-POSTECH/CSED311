@@ -8,9 +8,12 @@ module register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, read
 	output reg [`WORD_SIZE-1:0] readData1, readData2;
 
 	reg [`WORD_SIZE-1:0] register [`NUM_REGS-1:0];
-	reg i;
+	integer i,j;
+
 	initial begin
-		for (i = 0; i < `NUM_REGS; i = i+1) register[i] = 0;
+		for (i = 0; i < `NUM_REGS; i = i+1) begin
+			register[i] = 16'b0000_0000_0000_0000;
+		end
 	end
 
 	always @(*) begin // Combinational Logic	
@@ -19,12 +22,11 @@ module register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, read
 		if (RegWrite == 1) begin
 			register[writeReg] = writeBack;
 		end
-	end
-
-	always @(posedge RegWrite) begin // IF NEEDED
+		$display("register:  %b  %b %b \n",readReg1, readReg2, writeReg);
 	end
 
 	always @(negedge reset_n) begin // Reset Activated
+		for (j = 0; j < `NUM_REGS; j = j+1) register[j] <= 16'b0000_0000_0000_0000;
 	end
 
 endmodule 

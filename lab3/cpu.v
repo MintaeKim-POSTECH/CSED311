@@ -41,9 +41,10 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [`WORD_SIZE-1:0] PC_wire_cur;
 	wire [`WORD_SIZE-1:0] PC_wire_next, PC_wire_p1;
 	PC pc_cpu (clk, reset_n, PC_wire_next, PC_wire_cur);
-
-	assign address = PC_wire_cur;
-	adder add_1 (PC_wire_cur, 1, PC_wire_p1);
+	
+	//TODO
+	//assign address = ;
+	adder add_1 (PC_wire_cur, 16'b1, PC_wire_p1);
 	
 	// Control Unit
 	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
@@ -77,8 +78,8 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	mux mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
 
 	// J Type: JAL & JRL
-	mux mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
-	mux mux_jal_wb (Reg2Save, rt_vs_rd_id, 2, wb_reg_id);
+	mux_2bit mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
+	mux_2bit mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
 
 	mux mux_jal_wd (Reg2Save, alu_mem_res, PC_wire_cur, wd_wire);
 
@@ -93,16 +94,21 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	initial begin // Initial Logic
 		data_reg = 0;
+		readM = 0;
+		writeM = 0;
+		$display("initial \n");
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
 		readM <= 1;
 		writeM <= 0;
+		$display("state1 \n");
 	end
 	always @(posedge inputReady) begin // ID & EX
 		data_reg <= data;
 		readM <= 0;
 		writeM <= 0;
+		$display("state2 \n");
 	end
 
 	always @(negedge clk) begin // Clock II: MEM (Memory Access Stage)
@@ -110,13 +116,19 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		else readM <= 1;
 		if (MemWrite == 0) writeM <= 0;
 		else writeM <= 1;
-	end	
+		$display("state2 \n");
+	end
 	always @(posedge ackOutput) begin // Write Back
 		readM <= 0;
 		writeM <= 0;
+		$display("state2 \n");
 	end
 
 	always @(negedge reset_n) begin // Reset Activated
+		data_reg <= 0;
+		readM <= 0;
+		writeM <= 0;
+		$display("state2 \n");
 	end	
 																																			  
 endmodule							  																		  
