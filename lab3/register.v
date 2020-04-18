@@ -22,7 +22,6 @@ module register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, read
 		if (RegWrite == 1) begin
 			register[writeReg] = writeBack;
 		end
-		$display("register:  %b  %b %b \n",readReg1, readReg2, writeReg);
 	end
 
 	always @(negedge reset_n) begin // Reset Activated

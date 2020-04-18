@@ -31,7 +31,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [3:0] opcode;
 	wire [5:0] funcode;
 	
-	wire [`WORD_SIZE-1:0] rs, rt, rd;
+	wire [`WORD_SIZE-1:0] reg_data1, reg_data2;
 	
 	wire [`WORD_SIZE-1:0] imm_extend;
 
@@ -42,8 +42,6 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [`WORD_SIZE-1:0] PC_wire_next, PC_wire_p1;
 	PC pc_cpu (clk, reset_n, PC_wire_next, PC_wire_cur);
 	
-	//TODO
-	//assign address = ;
 	adder add_1 (PC_wire_cur, 16'b1, PC_wire_p1);
 	
 	// Control Unit
@@ -56,20 +54,23 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	
 	// ALU: R Type
 	wire [`WORD_SIZE-1:0] wd_wire;
-	register reg_cpu (reset_n, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, rs, rt);
+	register reg_cpu (reset_n, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, reg_data1, reg_data2);
 	alu_control alu_con (data_reg, opcode, funcode);
 	
 	// I Type
 	wire [`WORD_SIZE-1:0] B;
 	imm_generator imm_gen (data_reg[7:0], imm_extend);
-	mux mux_imm (ALUSrc, rt, imm_extend, B);
+	mux mux_imm (ALUSrc, reg_data2, imm_extend, B);
 
 	wire [`WORD_SIZE-1:0] alu_res;
 	wire [`WORD_SIZE-1:0] alu_mem_res;
 	
 	wire PCSrc3_bcond;
-	alu alu_1 (opcode, funcode, rs, B, alu_res, PCSrc3_bcond);
+	alu alu_1 (opcode, funcode, reg_data1, B, alu_res, PCSrc3_bcond);
 	mux mux_load (MemtoReg, alu_res, data_output, alu_mem_res);
+
+	assign address = alu_res;
+	assign data_output = reg_data2;
 
 	// J Type : JMP & JAL
 	wire [`WORD_SIZE-1:0] jmp_addr;
@@ -85,7 +86,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	// I Type: JRL & JPR
 	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
-	mux mux_jrl (PCSrc2, PC_wire_jtype, rs, PC_wire_itype_final);
+	mux mux_jrl (PCSrc2, PC_wire_jtype, reg_data1, PC_wire_itype_final);
 	
 	// I Type: Branch
 	wire [`WORD_SIZE-1:0] branch_addr;
@@ -96,19 +97,16 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		data_reg = 0;
 		readM = 0;
 		writeM = 0;
-		$display("initial \n");
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
 		readM <= 1;
 		writeM <= 0;
-		$display("state1 \n");
 	end
 	always @(posedge inputReady) begin // ID & EX
 		data_reg <= data;
 		readM <= 0;
 		writeM <= 0;
-		$display("state2 \n");
 	end
 
 	always @(negedge clk) begin // Clock II: MEM (Memory Access Stage)
@@ -116,19 +114,16 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		else readM <= 1;
 		if (MemWrite == 0) writeM <= 0;
 		else writeM <= 1;
-		$display("state2 \n");
 	end
 	always @(posedge ackOutput) begin // Write Back
 		readM <= 0;
 		writeM <= 0;
-		$display("state2 \n");
 	end
 
 	always @(negedge reset_n) begin // Reset Activated
 		data_reg <= 0;
 		readM <= 0;
 		writeM <= 0;
-		$display("state2 \n");
 	end	
 																																			  
 endmodule							  																		  

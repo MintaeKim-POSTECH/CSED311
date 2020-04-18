@@ -8,7 +8,6 @@ module PC (clk, reset_n, PC_next, PC_cur);
 		PC_cur = -1;
 	end
 	always @(posedge clk) begin
-		$display("PC:  %b \n",PC_cur);
 		PC_cur <= PC_next;
 	end
 
