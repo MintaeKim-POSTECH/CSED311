@@ -1,5 +1,4 @@
 `include "opcodes.v" 	   
-`include "register.v"
 `include "alu.v"
 `include "mux.v"
 `include "alu_control.v"
@@ -33,7 +32,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire [3:0] opcode;
 	wire [5:0] funcode;
 	
-	wire [`WORD_SIZE-1:0] reg_data1, reg_data2;
+	reg [`WORD_SIZE-1:0] reg_data1, reg_data2;
 	
 	wire [`WORD_SIZE-1:0] imm_extend;
 
@@ -46,17 +45,19 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	adder add_1 (PC, 16'b1, PC_wire_p1);
 	
 	// Control Unit
-	// Control Unit
 	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
 	control control_unit(data_reg, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
 
 	// Register
 	wire [1:0] wb_reg_id;
 	wire [1:0] rt_vs_rd_id;
+	reg [`WORD_SIZE-1:0] register [`NUM_REGS-1:0];
+	integer i;
 	
 	// ALU: R Type
 	wire [`WORD_SIZE-1:0] wd_wire;
-	register reg_cpu (reset_n, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, reg_data1, reg_data2);
+	// module   register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, readData2);
+	// register reg_cpu (reset_n, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, reg_data1, reg_data2);
 	alu_control alu_con (data_reg, opcode, funcode);
 	
 	// I Type
@@ -92,7 +93,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	
 	// I Type: Branch
 	wire [`WORD_SIZE-1:0] branch_addr;
-	adder add_b (PC, imm_extend, branch_addr);
+	adder add_b (PC_wire_p1, imm_extend, branch_addr);
 	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_next);
 
 	initial begin // Initial Logic
@@ -101,13 +102,24 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		writeM = 0;
 		CS = 0;
 		PC = 0;
+
+		for (i = 0; i < `NUM_REGS; i = i+1) begin
+			register[i] = 16'b0000_0000_0000_0000;
+		end
+	end
+
+	always @(*) begin // Register: Combinational Logic
+		reg_data1 = register[data_reg[11:10]];
+		reg_data2 = register[data_reg[9:8]];
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
+		if (RegWrite == 1) begin
+			register[wb_reg_id] <= wd_wire;
+		end
 		if(CS==0)begin
 			readM <= 1;
 			writeM <= 0;
-			$display("state2");
 			CS <= 1;
 		end 
 		
@@ -117,16 +129,12 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 			data_reg <= data;
 			readM <= 0;
 			writeM <= 0;
-			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
-			$display("state3");
 			CS <= 2;
 		end
 		else if(CS==3) begin
 			data_reg <= data;
 			readM <= 0;
 			writeM <= 0;
-			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
-			$display("state3");
 			PC <= PC_next;
 			CS <= 0;
 		end
@@ -146,8 +154,6 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 				PC <= PC_next;
 				CS <= 0;
 			end
-			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
-			$display("state4");
 		end
 		
 	end
@@ -155,19 +161,18 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		if(CS==4)begin
 			readM <= 0;
 			writeM <= 0;
-			$display("state5");
 			PC <= PC_next;
 			CS <= 0;
 		end
 	end
 
 	always @(negedge reset_n) begin // Reset Activated
+		for (i = 0; i < `NUM_REGS; i = i+1) register[i] <= 16'b0000_0000_0000_0000;
 		data_reg <= 0;
 		readM <= 1;
 		writeM <= 0;
 		PC <= 0;
 		CS <= 0;
-		$display("state6");
 	end	
 																																			  
 endmodule

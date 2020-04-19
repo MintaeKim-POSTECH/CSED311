@@ -25,10 +25,27 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 	end
 
 	always @(*) begin
+		isJAL = 0;
+		isJRL = 0;
+		isJPR = 0;
+		isLoad = 0;
+		isStore = 0;
+		RegDest = 0;
+		MemRead = 0;
+		MemtoReg = 0;
+		MemWrite = 0;
+		ALUSrc = 0;
+		RegWrite = 0;
+		Reg2Save = 0;
+		PCSrc1 = 0;
+		PCSrc2 = 0;
+	
 		opcode=inst[15:12];
 		if(opcode<=8)begin
-			// ALUSrc: Using Immediate Values?
-			ALUSrc = 1;
+			// ALUSrc: Using Immediate Values? / Branch Exception
+			if (opcode <= 3) ALUSrc = 0;
+			else ALUSrc = 1;
+	
 			if(opcode==7)begin
 				isLoad = 1;
 			end
@@ -45,6 +62,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 			isJAL = 1;
 		end
 		else if (opcode==15)begin
+			ALUSrc = 0;
 			// RegDest: R Type (rd) vs I Type (rt)
 			RegDest = 1; 
 			if(inst[5:0]==25)begin
@@ -58,6 +76,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		// RegWrite
 		if (isStore == 1) RegWrite = 0;
 		else if (opcode >= 0 && opcode <= 3) RegWrite = 0;
+		else if (opcode == 9 || (opcode == 15 && inst[5:0] == 25)) RegWrite = 0;
 		else RegWrite = 1;
 
 		// Reg2Save: Instructions that Saves PC in $2 / (isJAL || isJRL)

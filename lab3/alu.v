@@ -32,12 +32,11 @@ module alu(opcode, funcode, A, B, result, bcond);
 			case (opcode)
 				4: result = (A + B);  // ADI
 				5: result = (A | B);  // ORI
-				6: result = (A << 8); // LHI
+				6: result = (B << 8); // LHI
 				7: result = (A + B);  // LWD (Load)
 				8: result = (A + B);  // SWD (Store)
 			endcase
 		end
-
 		// Branch Condition Determination
 		case (opcode)
 			0: bcond = ((A == B) ? 0 : 1);
