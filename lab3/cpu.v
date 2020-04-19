@@ -40,11 +40,10 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	// Module Instantiation & Wire Connection
 	// PC
-	wire [`WORD_SIZE-1:0] PC_wire_cur;
-	wire [`WORD_SIZE-1:0] PC_wire_next, PC_wire_p1;
-	PC pc_cpu (clk, reset_n, PC_wire_next, PC_wire_cur);
-	
-	adder add_1 (PC_wire_cur, 16'b1, PC_wire_p1);
+	reg [`WORD_SIZE-1:0] PC;
+	wire [`WORD_SIZE-1:0] PC_next, PC_wire_p1;
+
+	adder add_1 (PC, 16'b1, PC_wire_p1);
 	
 	// Control Unit
 	// Control Unit
@@ -70,22 +69,22 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	
 	wire PCSrc3_bcond;
 	alu alu_1 (opcode, funcode, reg_data1, B, alu_res, PCSrc3_bcond);
-	mux mux_load (MemtoReg, alu_res, data_output, alu_mem_res);
+	mux mux_load (MemtoReg, alu_res, data_reg, alu_mem_res);
 	
-	assign address = (CS<=1)?PC_wire_cur:alu_res;
+	assign address = (CS<=1)?PC:alu_res;
 	assign data_output = reg_data2;
 
 	// J Type : JMP & JAL
 	wire [`WORD_SIZE-1:0] jmp_addr;
 	wire [`WORD_SIZE-1:0] PC_wire_jtype;
-	jmp_control jmp_addr_calc (PC_wire_cur, data_reg[11:0], jmp_addr);
+	jmp_control jmp_addr_calc (PC, data_reg[11:0], jmp_addr);
 	mux mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
 
 	// J Type: JAL & JRL
 	mux_2bit mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
 	mux_2bit mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
 
-	mux mux_jal_wd (Reg2Save, alu_mem_res, PC_wire_cur, wd_wire);
+	mux mux_jal_wd (Reg2Save, alu_mem_res, PC, wd_wire);
 
 	// I Type: JRL & JPR
 	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
@@ -93,15 +92,15 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	
 	// I Type: Branch
 	wire [`WORD_SIZE-1:0] branch_addr;
-	adder add_b (PC_wire_cur, imm_extend, branch_addr);
-	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_wire_next);
+	adder add_b (PC, imm_extend, branch_addr);
+	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_next);
 
 	initial begin // Initial Logic
 		data_reg = 0;
 		readM = 1;
 		writeM = 0;
 		CS = 0;
-		$display("state1");
+		PC = 0;
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
@@ -128,6 +127,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 			writeM <= 0;
 			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
 			$display("state3");
+			PC <= PC_next;
 			CS <= 0;
 		end
 	end
@@ -143,6 +143,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 				CS <= 4;
 			end
 			else begin
+				PC <= PC_next;
 				CS <= 0;
 			end
 			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
@@ -155,6 +156,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 			readM <= 0;
 			writeM <= 0;
 			$display("state5");
+			PC <= PC_next;
 			CS <= 0;
 		end
 	end
@@ -163,6 +165,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		data_reg <= 0;
 		readM <= 1;
 		writeM <= 0;
+		PC <= 0;
 		CS <= 0;
 		$display("state6");
 	end	

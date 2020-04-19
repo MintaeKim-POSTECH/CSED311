@@ -34,6 +34,7 @@ module alu(opcode, funcode, A, B, result, bcond);
 				5: result = (A | B);  // ORI
 				6: result = (A << 8); // LHI
 				7: result = (A + B);  // LWD (Load)
+				8: result = (A + B);  // SWD (Store)
 			endcase
 		end
 

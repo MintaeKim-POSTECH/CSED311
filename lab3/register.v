@@ -16,11 +16,15 @@ module register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, read
 		end
 	end
 
-	always @(*) begin // Combinational Logic	
+	always @(*) begin // Combinational Logic
 		readData1 = register[readReg1];
 		readData2 = register[readReg2];
+		$display ("RegWrite = %d", RegWrite);	
+		$display ("reg1 : %d / reg2 : %d / rd1 : %d / rd2 : %d / regw : %d / wb : %d", readReg1, readReg2, readData1, readData2, writeReg, writeBack);
 		if (RegWrite == 1) begin
 			register[writeReg] = writeBack;
+			$display ("reg : %d written, value %d", writeReg, writeBack);
+			$display ("Saved Value : %d", register[writeReg]);
 		end
 	end
 
