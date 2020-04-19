@@ -21,11 +21,13 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	// Read & Write
 	reg readM, writeM;
 	
+	reg[2:0] CS; //current state 
+	
 	// Data Line Wiring
 	reg [`WORD_SIZE-1:0] data_reg;
 	wire [`WORD_SIZE-1:0] data_output;
 
-	assign data = readM ? data_output : 16'bz;
+	assign data = readM ? 16'bz:data_output;
 
 	// Parameters
 	wire [3:0] opcode;
@@ -44,6 +46,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	
 	adder add_1 (PC_wire_cur, 16'b1, PC_wire_p1);
 	
+	// Control Unit
 	// Control Unit
 	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
 	control control_unit(data_reg, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
@@ -68,8 +71,8 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	wire PCSrc3_bcond;
 	alu alu_1 (opcode, funcode, reg_data1, B, alu_res, PCSrc3_bcond);
 	mux mux_load (MemtoReg, alu_res, data_output, alu_mem_res);
-
-	assign address = alu_res;
+	
+	assign address = (CS<=1)?PC_wire_cur:alu_res;
 	assign data_output = reg_data2;
 
 	// J Type : JMP & JAL
@@ -95,35 +98,73 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	initial begin // Initial Logic
 		data_reg = 0;
-		readM = 0;
+		readM = 1;
 		writeM = 0;
+		CS = 0;
+		$display("state1");
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
-		readM <= 1;
-		writeM <= 0;
+		if(CS==0)begin
+			readM <= 1;
+			writeM <= 0;
+			$display("state2");
+			CS <= 1;
+		end 
+		
 	end
 	always @(posedge inputReady) begin // ID & EX
-		data_reg <= data;
-		readM <= 0;
-		writeM <= 0;
+		if(CS==1)begin
+			data_reg <= data;
+			readM <= 0;
+			writeM <= 0;
+			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
+			$display("state3");
+			CS <= 2;
+		end
+		else if(CS==3) begin
+			data_reg <= data;
+			readM <= 0;
+			writeM <= 0;
+			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
+			$display("state3");
+			CS <= 0;
+		end
 	end
 
 	always @(negedge clk) begin // Clock II: MEM (Memory Access Stage)
-		if (MemRead == 0) readM <= 0;
-		else readM <= 1;
-		if (MemWrite == 0) writeM <= 0;
-		else writeM <= 1;
+		if(CS==2)begin
+			if(MemRead==1)begin
+				readM <= 1;
+				CS <= 3;
+			end
+			else if(MemWrite==1)begin
+				writeM <= 1;
+				CS <= 4;
+			end
+			else begin
+				CS <= 0;
+			end
+			$display("data_reg: %h,data: %h , address: %d",data_reg,data,address);
+			$display("state4");
+		end
+		
 	end
 	always @(posedge ackOutput) begin // Write Back
-		readM <= 0;
-		writeM <= 0;
+		if(CS==4)begin
+			readM <= 0;
+			writeM <= 0;
+			$display("state5");
+			CS <= 0;
+		end
 	end
 
 	always @(negedge reset_n) begin // Reset Activated
 		data_reg <= 0;
-		readM <= 0;
+		readM <= 1;
 		writeM <= 0;
+		CS <= 0;
+		$display("state6");
 	end	
 																																			  
-endmodule							  																		  
+endmodule

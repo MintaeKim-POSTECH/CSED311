@@ -9,6 +9,11 @@ module alu(opcode, funcode, A, B, result, bcond);
 	output reg [`WORD_SIZE-1:0] result;
 	output reg bcond;
 
+	initial begin
+		result = 0;
+		bcond = 0;
+	end
+
 	always @(*) begin
 		// Result determination
 		if (opcode == 15) begin // R Type
