@@ -113,18 +113,28 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
-		$display ("Posedge Visited: CS : %d", CS);
-		if (RegWrite == 1) begin
-			register[wb_reg_id] <= wd_wire;
-		end
-		if(CS==0) begin
-			$display ("clk+ - PC: %d / PC_next: %d", PC, PC_next);
-			PC <= PC_next;
+		if (!reset_n) begin
+			$display ("Reset Activated");
+			for (i = 0; i < `NUM_REGS; i = i+1) register[i] <= 16'b0000_0000_0000_0000;
+			data_reg <= 0;
 			readM <= 1;
 			writeM <= 0;
-			CS <= 1;
-		end 
-		
+			PC <= -1;
+			CS <= 0;
+		end
+		else begin
+			$display ("Posedge Visited: CS : %d", CS);
+			if (RegWrite == 1) begin
+				register[wb_reg_id] <= wd_wire;
+			end
+			PC <= PC_next;
+			if(CS==0) begin
+				$display ("clk+ - PC: %d / PC_next: %d", PC, PC_next);
+				readM <= 1;
+				writeM <= 0;
+				CS <= 1;
+			end 
+		end		
 	end
 	always @(posedge inputReady) begin // ID & EX
 		$display ("inputReady Visited: PC: %d / PC_next: %d", PC, PC_next);
@@ -166,16 +176,5 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 			writeM <= 0;
 			CS <= 0;
 		end
-	end
-
-	always @(negedge reset_n) begin // Reset Activated
-		$display ("Reset Activated");
-		for (i = 0; i < `NUM_REGS; i = i+1) register[i] <= 16'b0000_0000_0000_0000;
-		data_reg <= 0;
-		readM <= 1;
-		writeM <= 0;
-		PC <= -1;
-		CS <= 0;
-	end	
-																																			  
+	end																																  
 endmodule
