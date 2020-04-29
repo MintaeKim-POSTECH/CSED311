@@ -5,6 +5,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 	output reg RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
 
 	reg [3:0] opcode;
+	reg [5:0] funcode;
 
 	initial begin
 		RegDest = 0;
@@ -18,7 +19,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		PCSrc2 = 0;
 	end
 
-	always @(*) begin
+	always @(*) begin // Combinational Logic
 		RegDest = 0;
 		MemRead = 0;
 		MemtoReg = 0;
@@ -30,6 +31,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		PCSrc2 = 0;
 	
 		opcode=inst[15:12];
+		funcode=inst[5:0];
 
 		//RegDest: R Type (rd) vs I Type (rt)
 		if (opcode==15)begin
@@ -61,7 +63,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		//Reg2Save: isJAL || isJRL, 
 		// JAL: opcode 10
 		// JRL: opcode 15 and function code 26
-		if (opcode==10||(opcode==15&&inst[5:0]==26))begin
+		if (opcode==10||(opcode==15&&funcode==26))begin
 			Reg2Save=1;
 		end
 
@@ -74,7 +76,7 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		//JRL: opcode 15 and function code 26
 		//JPR: opcode 15 and function code 25
 		if (opcode==15)begin
-			if(inst[5:0]==25||inst[5:0]==26) PCSrc2 = 1;
+			if(funcode==25||funcode==26) PCSrc2 = 1;
 		end
 	end
 endmodule

@@ -1,3 +1,6 @@
+`timescale 1ns/1ns
+`define WORD_SIZE 16    // data and address word size
+
 `include "opcodes.v" 	   
 `include "alu.v"
 `include "mux.v"
@@ -6,16 +9,25 @@
 `include "adder.v"
 `include "jmp_control.v"
 `include "control.v"
+`include "PC.v"
 
-module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
-	output readM;									
-	output writeM;								
-	output [`WORD_SIZE-1:0] address;	
-	inout [`WORD_SIZE-1:0] data;		
-	input ackOutput;								
-	input inputReady;								
-	input reset_n;									
+module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is_halted);
+	// In : num_inst, output_port, is_halted
+	// Out : ackOutput, inputReady
+
 	input clk;
+	input reset_n;
+	
+	output readM;
+	output writeM;
+	output [`WORD_SIZE-1:0] address;
+
+	inout [`WORD_SIZE-1:0] data;
+
+	output [`WORD_SIZE-1:0] num_inst;	// number of instruction during execution (for debuging & testing purpose)
+	output [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
+	output is_halted;
+
 
 	// Read & Write
 	reg readM, writeM;
@@ -31,18 +43,12 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	// Parameters
 	wire [3:0] opcode;
 	wire [5:0] funcode;
-	
-	reg [`WORD_SIZE-1:0] reg_data1, reg_data2;
-	
-	wire [`WORD_SIZE-1:0] imm_extend;
 
 
 	// Module Instantiation & Wire Connection
 	// PC
-	reg [`WORD_SIZE-1:0] PC;
-	wire [`WORD_SIZE-1:0] PC_next, PC_wire_p1;
-
-	adder add_1 (PC, 16'b1, PC_wire_p1);
+	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
+	PC pc (PC_cur, PC_next, reset_n, clk);
 	
 	// Control Unit
 	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
@@ -50,18 +56,17 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	// Register
 	wire [1:0] wb_reg_id;
-	wire [1:0] rt_vs_rd_id;
-	reg [`WORD_SIZE-1:0] register [`NUM_REGS-1:0];
-	integer i;
+	wire [`WORD_SIZE-1:0] reg_data1, reg_data2, wd_wire;
+	register_cpu reg_cpu (reg_data1, reg_data2, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, reset_n, clk);
 	
+	wire [`WORD_SIZE-1:0] PC_wire_p1;
+	adder add_1 (PC_cur, 16'b1, PC_wire_p1);
+
 	// ALU: R Type
-	wire [`WORD_SIZE-1:0] wd_wire;
-	// module   register(reset_n, readReg1, readReg2, writeReg, writeBack, RegWrite, readData1, readData2);
-	// register reg_cpu (reset_n, data_reg[11:10], data_reg[9:8], wb_reg_id, wd_wire, RegWrite, reg_data1, reg_data2);
 	alu_control alu_con (data_reg, opcode, funcode);
 	
 	// I Type
-	wire [`WORD_SIZE-1:0] B;
+	wire [`WORD_SIZE-1:0] B, imm_extend;
 	imm_generator imm_gen (data_reg[7:0], imm_extend);
 	mux mux_imm (ALUSrc, reg_data2, imm_extend, B);
 
@@ -72,20 +77,21 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	alu alu_1 (opcode, funcode, reg_data1, B, alu_res, PCSrc3_bcond);
 	mux mux_load (MemtoReg, alu_res, data_reg, alu_mem_res);
 	
-	assign address = (CS<=1)?PC:alu_res;
+	assign address = (CS<=1)?PC_cur:alu_res;
 	assign data_output = reg_data2;
 
 	// J Type : JMP & JAL
 	wire [`WORD_SIZE-1:0] jmp_addr;
 	wire [`WORD_SIZE-1:0] PC_wire_jtype;
-	jmp_control jmp_addr_calc (PC, data_reg[11:0], jmp_addr);
+	jmp_control jmp_addr_calc (PC_cur, data_reg[11:0], jmp_addr);
 	mux mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
 
 	// J Type: JAL & JRL
+	wire [1:0] rt_vs_rd_id;
 	mux_2bit mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
 	mux_2bit mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
 
-	mux mux_jal_wd (Reg2Save, alu_mem_res, PC, wd_wire);
+	mux mux_jal_wd (Reg2Save, alu_mem_res, PC_cur, wd_wire);
 
 	// I Type: JRL & JPR
 	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
@@ -98,38 +104,23 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 
 	initial begin // Initial Logic
 		data_reg = 0;
-		readM = 1;
+		readM = 0;
 		writeM = 0;
 		CS = 0;
-		PC = -1;
-		for (i = 0; i < `NUM_REGS; i = i+1) begin
-			register[i] = 16'b0000_0000_0000_0000;
-		end
-	end
-
-	always @(*) begin // Register: Combinational Logic
-		reg_data1 = register[data_reg[11:10]];
-		reg_data2 = register[data_reg[9:8]];
 	end
 
 	always @(posedge clk) begin // Clock I: IF (Instruction Fetch Stage)
 		if (!reset_n) begin
-			$display ("Reset Activated");
-			for (i = 0; i < `NUM_REGS; i = i+1) register[i] <= 16'b0000_0000_0000_0000;
+			// $display ("Reset Activated");
 			data_reg <= 0;
-			readM <= 1;
+			readM <= 0;
 			writeM <= 0;
-			PC <= -1;
 			CS <= 0;
 		end
 		else begin
-			$display ("Posedge Visited: CS : %d", CS);
-			if (RegWrite == 1) begin
-				register[wb_reg_id] <= wd_wire;
-			end
-			PC <= PC_next;
+			// $display ("Posedge Visited: CS : %d", CS);
 			if(CS==0) begin
-				$display ("clk+ - PC: %d / PC_next: %d", PC, PC_next);
+				// $display ("clk+ - PC: %d / PC_next: %d", PC_cur, PC_next);
 				readM <= 1;
 				writeM <= 0;
 				CS <= 1;
@@ -137,7 +128,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		end		
 	end
 	always @(posedge inputReady) begin // ID & EX
-		$display ("inputReady Visited: PC: %d / PC_next: %d", PC, PC_next);
+		// $display ("inputReady Visited: PC: %d / PC_next: %d", PC_cur, PC_next);
 		if(CS==1)begin
 			data_reg <= data;
 			readM <= 0;
@@ -153,7 +144,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 	end
 
 	always @(negedge clk) begin // Clock II: MEM (Memory Access Stage)
-		$display ("Negedge Visited");
+		// $display ("Negedge Visited");
 		if(CS==2)begin
 			if(MemRead==1)begin
 				readM <= 1;
@@ -170,7 +161,7 @@ module cpu (readM, writeM, address, data, ackOutput, inputReady, reset_n, clk);
 		
 	end
 	always @(posedge ackOutput) begin // Write Back
-		$display ("ackOutput Visited");
+		// $display ("ackOutput Visited");
 		if(CS==4)begin
 			readM <= 0;
 			writeM <= 0;
