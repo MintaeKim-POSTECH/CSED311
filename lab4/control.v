@@ -1,12 +1,14 @@
 `include "macro.v"
 
-module control(inst, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
+module mcode_control(inst, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
 	input [`WORD_SIZE-1:0] inst;
 	output reg MemRead, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
 	output reg [1:0] WriteDataCtrl, WriteRegCtrl;
 
 	reg [3:0] opcode;
 	reg [5:0] funcode;
+
+	reg [3:0] State;
 
 	initial begin
 		MemRead = 0;
@@ -17,6 +19,7 @@ module control(inst, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, Reg
 		RegWrite = 0;
 		PCSrc1 = 0;
 		PCSrc2 = 0;
+		State = 0;
 	end
 
 	always @(*) begin // Combinational Logic

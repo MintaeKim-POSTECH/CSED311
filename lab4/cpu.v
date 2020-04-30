@@ -51,7 +51,7 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	
 	// Control Unit
 	wire MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
-	control control_unit(data_reg, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
+	mcode_control control_unit(data_reg, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
 
 	// Register
 	wire [1:0] wb_reg_id;
