@@ -12,6 +12,8 @@ module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, M
 
 	reg [3:0] state;
 
+	reg PVSWriteEn;
+
 	initial begin
 		MemRead = 0;
 		WriteDataCtrl = 0;
@@ -23,6 +25,8 @@ module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, M
 		PCSrc2 = 0;
 		
 		state = `INIT_STATE;
+
+		PVSWriteEn=0;
 	end
 
 	always @(*) begin // Combinational Logic
@@ -125,9 +129,10 @@ module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, M
 						// TODO: PVSWriteEn
 					end
 					else state <= (state + 1);
-				`WB:
+				`WB: begin
 					state <= `IF1;
-					// TODO: PVSWriteEn
+					PVSWriteEn<=1;
+				 end
 				`HLT:   // TODO: Do Nothing
 					;
 				default: state <= (state + 1);
