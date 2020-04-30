@@ -26,7 +26,6 @@ module alu(opcode, funcode, A, B, result, bcond);
 				5: result = (~A + 1); // TCP
 				6: result = (A << 1); // SHL
 				7: result = (A >> 1); // SHR
-				28: result = A;       // WWD
 			endcase
 		end
 		else begin // I Type
