@@ -37,22 +37,26 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	
 	// Data Line Wiring
 	wire [`WORD_SIZE-1:0] inst_reg_data;
-	wire [`WORD_SIZE-1:0] data_output;
-
-	assign data = readM ? 16'bz:data_output;
 
 	// Parameters
 	wire [3:0] opcode;
 	wire [5:0] funcode;
 
-	// Module Instantiation & Wire Connection
-	// PC
-	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
-	PC pc (PC_cur, PC_next, reset_n, clk);
+	// Register A, B
+	reg [`WORD_SIZE-1:0] A, B, ALUOut;
 	
+	// Data Assignment
+	assign data = (readM ? 16'bz : B);
+
 	// Control Unit
 	wire MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
 	mcode_control control_unit(inst_reg_data, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
+
+	// PC
+	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
+	wire PC_update;
+	// TODO: PC_update implementation
+	PC pc (PC_cur, PC_next, PC_update, reset_n, clk);
 
 	// Register
 	wire [1:0] wb_reg_id;
@@ -62,62 +66,49 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	// Instruction Register & Memory Data Register
 	inst_register inst_reg(data, inst_reg_data, IRWrite, reset_n, clk);
 	reg [`WORD_SIZE-1:0] mem_reg_data;
+	
+	// Immediate Generator
+	wire [`WORD_SIZE-1:0] imm_extend;
+	imm_generator imm_gen (inst_reg_data[7:0], imm_extend);
 
-	// Register A, B
-	reg [`WORD_SIZE-1:0] A, B;
+	// ALU Source Determination MUX
+	wire [`WORD_SIZE-1:0] alu_op1, alu_op2;
+	// TODO: ALUSrcA, ALUSrcB Implementation
+	// ALUSrcA: 1Bit, ALUSrc B: 2Bit
+	mux16_2to1 mux_a (ALUSrcA, PC_cur, A, alu_op1);
+	mux16_4to1 mux_b (ALUSrcB, B, 16'b0000_0000_0000_0001, imm_extend, , alu_op2);
 
-	wire [`WORD_SIZE-1:0] PC_wire_p1;
-	adder add_1 (PC_cur, 16'b1, PC_wire_p1);
-
-	// ALU: R Type
+	// ALU Control
 	alu_control alu_con (inst_reg_data, opcode, funcode);
 	
-	// I Type
-	wire [`WORD_SIZE-1:0] alu_op2, imm_extend;
-	imm_generator imm_gen (inst_reg_data[7:0], imm_extend);
-	mux16_2to1 mux_imm (ALUSrc, B, imm_extend, alu_op2);
-
+	// ALU
 	wire [`WORD_SIZE-1:0] alu_res;
-	wire [`WORD_SIZE-1:0] alu_mem_res;
+	wire bcond;
+	alu alu_1 (opcode, funcode, A, alu_op2, alu_res, bcond);
 	
-	wire PCSrc3_bcond;
-	alu alu_1 (opcode, funcode, A, alu_op2, alu_res, PCSrc3_bcond);
-	
-	assign address = (CS<=1)?PC_cur:alu_res;
-	assign data_output = B;
+	// Jump Address Calculation
+	wire [`WORD_SIZE-1:0] jump_addr;
+	jmp_control jmp_addr_calc (PC_cur, inst_reg_data[11:0], jump_addr);
 
-	// J Type : JMP & JAL
-	wire [`WORD_SIZE-1:0] jmp_addr;
-	wire [`WORD_SIZE-1:0] PC_wire_jtype;
-	jmp_control jmp_addr_calc (PC_cur, inst_reg_data[11:0], jmp_addr);
-	mux16_2to1 mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
+	// Memory Access Address Determination
+	mux16_2to1 mux_iord (IorD, PC_cur, ALUOut, address);
 
-	// J Type: JAL & JRL
-	// wire [1:0] rt_vs_rd_id;
-	// mux2_2to1 mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
-	// mux2_2to1 mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
-	mux2_4to1 mux_wb (WriteRegCtrl, inst_reg_data[9:8], inst_reg_data[7:6], 2'b10, 16'b0, wb_reg_id);
+	// PC_next Determination
+	mux16_4to1 mux_pc_next (PCSrc, alu_res, ALUOut, jump_addr, , PC_next);
+
+	// Write Register ID Determination
+	mux2_4to1 mux_wb (WriteRegCtrl, inst_reg_data[9:8], inst_reg_data[7:6], 2'b10, , wb_reg_id);
 	
-	//mux16_2to1 mux_load (MemtoReg, alu_res, data_reg, alu_mem_res);
-	//mux16_2to1 mux_jal_wd (Reg2Save, alu_mem_res, PC_cur, wd_wire);
+	// Write Data Determination
 	mux16_4to1 mux_wd(WriteDataCtrl, alu_res, mem_reg_data, PC_cur, 16'b0, wd_wire);
-
-	// I Type: JRL & JPR
-	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
-	mux16_2to1 mux_jrl (PCSrc2, PC_wire_jtype, A, PC_wire_itype_final);
-	
-	// I Type: Branch
-	wire [`WORD_SIZE-1:0] branch_addr;
-	adder add_b (PC_wire_p1, imm_extend, branch_addr);
-	mux16_2to1 mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_next);
 
 	initial begin // Initial Logic
 		mem_reg_data = 0;
 		readM = 0;
 		writeM = 0;
-		CS = 0;
 		A = 0;
 		B = 0;
+		ALUOut = 0;
 	end
 
 	always @(posedge clk) begin
@@ -125,17 +116,19 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 			mem_reg_data <= 0;
 			readM <= 0;
 			writeM <= 0;
+
 			A <= 0;
 			B <= 0;
+			ALUOut <= 0;
 		end
 		else begin
 			mem_reg_data <= data;
 			readM <= MemRead;
 			writeM <= MemWrite;
 
-			// TODO: Update A, B
 			A <= reg_data1;
 			B <= reg_data2;
+			ALUOut <= alu_res;
 		end
 	end
 																													  
