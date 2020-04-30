@@ -1,4 +1,4 @@
-`include "opcodes.v"
+`include "macro.v"
 
 module mux16_2to1(control, i1, i2, result);
 	input control;

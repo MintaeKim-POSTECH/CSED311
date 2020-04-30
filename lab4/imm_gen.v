@@ -1,4 +1,5 @@
-`include "opcodes.v"
+`include "macro.v"
+
 module imm_generator (before, extended);
 	input [7:0] before;
 	output wire [`WORD_SIZE-1:0] extended;

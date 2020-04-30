@@ -1,7 +1,7 @@
 `timescale 1ns/1ns
-`define WORD_SIZE 16    // data and address word size
 
-`include "opcodes.v" 	   
+`include "macro.v" 
+	   
 `include "alu.v"
 `include "mux.v"
 `include "alu_control.v"
@@ -44,15 +44,14 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	wire [3:0] opcode;
 	wire [5:0] funcode;
 
-
 	// Module Instantiation & Wire Connection
 	// PC
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
 	PC pc (PC_cur, PC_next, reset_n, clk);
 	
 	// Control Unit
-	wire RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
-	control control_unit(data_reg, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
+	wire MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
+	control control_unit(data_reg, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
 
 	// Register
 	wire [1:0] wb_reg_id;
@@ -68,14 +67,13 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	// I Type
 	wire [`WORD_SIZE-1:0] B, imm_extend;
 	imm_generator imm_gen (data_reg[7:0], imm_extend);
-	mux mux_imm (ALUSrc, reg_data2, imm_extend, B);
+	mux16_2to1 mux_imm (ALUSrc, reg_data2, imm_extend, B);
 
 	wire [`WORD_SIZE-1:0] alu_res;
 	wire [`WORD_SIZE-1:0] alu_mem_res;
 	
 	wire PCSrc3_bcond;
 	alu alu_1 (opcode, funcode, reg_data1, B, alu_res, PCSrc3_bcond);
-	mux mux_load (MemtoReg, alu_res, data_reg, alu_mem_res);
 	
 	assign address = (CS<=1)?PC_cur:alu_res;
 	assign data_output = reg_data2;
@@ -84,23 +82,26 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	wire [`WORD_SIZE-1:0] jmp_addr;
 	wire [`WORD_SIZE-1:0] PC_wire_jtype;
 	jmp_control jmp_addr_calc (PC_cur, data_reg[11:0], jmp_addr);
-	mux mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
+	mux16_2to1 mux_j (PCSrc1, PC_wire_p1, jmp_addr, PC_wire_jtype);
 
 	// J Type: JAL & JRL
-	wire [1:0] rt_vs_rd_id;
-	mux_2bit mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
-	mux_2bit mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
-
-	mux mux_jal_wd (Reg2Save, alu_mem_res, PC_cur, wd_wire);
+	// wire [1:0] rt_vs_rd_id;
+	// mux2_2to1 mux_wb_target (RegDest, data_reg[9:8], data_reg[7:6], rt_vs_rd_id);
+	// mux2_2to1 mux_jal_wb (Reg2Save, rt_vs_rd_id, 2'b10, wb_reg_id);
+	mux2_4to1 mux_wb (WriteRegCtrl, data_reg[9:8], data_reg[7:6], 2'b10, 16'b0, wb_reg_id);
+	
+	//mux16_2to1 mux_load (MemtoReg, alu_res, data_reg, alu_mem_res);
+	//mux16_2to1 mux_jal_wd (Reg2Save, alu_mem_res, PC_cur, wd_wire);
+	mux16_4to1 mux_wd(WriteDataCtrl, alu_res, data_reg, PC_cur, 16'b0, wd_wire);
 
 	// I Type: JRL & JPR
 	wire [`WORD_SIZE-1:0] PC_wire_itype_final;
-	mux mux_jrl (PCSrc2, PC_wire_jtype, reg_data1, PC_wire_itype_final);
+	mux16_2to1 mux_jrl (PCSrc2, PC_wire_jtype, reg_data1, PC_wire_itype_final);
 	
 	// I Type: Branch
 	wire [`WORD_SIZE-1:0] branch_addr;
 	adder add_b (PC_wire_p1, imm_extend, branch_addr);
-	mux mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_next);
+	mux16_2to1 mux_final (PCSrc3_bcond, PC_wire_itype_final, branch_addr, PC_next);
 
 	initial begin // Initial Logic
 		data_reg = 0;

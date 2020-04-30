@@ -1,4 +1,4 @@
-`include "opcodes.v"
+`include "macro.v"
 
 module adder (a, b, res);
 	input [`WORD_SIZE-1:0] a, b;

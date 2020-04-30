@@ -1,4 +1,4 @@
-`include "opcodes.v" 	   
+`include "macro.v"	   
 
 module alu(opcode, funcode, A, B, result, bcond);
 	input [3:0] opcode;

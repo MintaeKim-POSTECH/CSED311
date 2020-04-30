@@ -1,48 +1,57 @@
-`include "opcodes.v"
+`include "macro.v"
 
-module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
+module control(inst, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
 	input [`WORD_SIZE-1:0] inst;
-	output reg RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
+	output reg MemRead, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
+	output reg [1:0] WriteDataCtrl, WriteRegCtrl;
 
 	reg [3:0] opcode;
 	reg [5:0] funcode;
 
 	initial begin
-		RegDest = 0;
 		MemRead = 0;
-		MemtoReg = 0;
+		WriteDataCtrl = 0;
+		WriteRegCtrl = 0;
 		MemWrite = 0;
 		ALUSrc = 0;
 		RegWrite = 0;
-		Reg2Save = 0;
 		PCSrc1 = 0;
 		PCSrc2 = 0;
 	end
 
 	always @(*) begin // Combinational Logic
-		RegDest = 0;
 		MemRead = 0;
-		MemtoReg = 0;
+		WriteDataCtrl = 0;
+		WriteRegCtrl = 0;
 		MemWrite = 0;
 		ALUSrc = 0;
 		RegWrite = 0;
-		Reg2Save = 0;
 		PCSrc1 = 0;
 		PCSrc2 = 0;
 	
 		opcode=inst[15:12];
 		funcode=inst[5:0];
 
-		//RegDest: R Type (rd) vs I Type (rt)
-		if (opcode==15)begin
-			RegDest = 1; 
-		end
-
-		//MemRead, MemtoReg: True for Load Instruction
+		//MemRead: True for Load Instruction
 		if (opcode==7)begin
 			MemRead = 1;
-			MemtoReg = 1;
 		end
+
+		//WriteDataCtrl: Determines data to write.
+		//0: ALU_result (default)
+		//1: Memory Data (isLoad)
+		//2: PC (isJAL || isJRL)
+		if (opcode == 7) WriteDataCtrl = 1;
+		else if (opcode==10||(opcode==15&&funcode==26)) WriteDataCtrl = 2;
+		else WriteDataCtrl = 0;
+
+		//WriteRegCtrl: Determines register to write.
+		//0: <rt>
+		//1: <rd> (RegDest)
+		//2: 2 (Reg2Save // isJAL || isJRL)
+		if (opcode == 15) WriteRegCtrl = 1;
+		else if (opcode==10||(opcode==15&&funcode==26)) WriteRegCtrl = 2;
+		else WriteRegCtrl = 0;
 
 		//MemWrite: True for Store Instruction(opcode 8)
 		if (opcode==8)begin
@@ -58,13 +67,6 @@ module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg
 		if (opcode>=4&&opcode<=7 || opcode>=10&&opcode<=15)begin
 			if(opcode==15&&inst[5:0]==25) RegWrite = 0;
 			else RegWrite = 1;
-		end
-
-		//Reg2Save: isJAL || isJRL, 
-		// JAL: opcode 10
-		// JRL: opcode 15 and function code 26
-		if (opcode==10||(opcode==15&&funcode==26))begin
-			Reg2Save=1;
 		end
 
 		//PCSrc1

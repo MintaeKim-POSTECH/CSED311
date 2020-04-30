@@ -1,4 +1,4 @@
-`include "opcodes.v"
+`include "macro.v"
 
 module register_cpu (readData1, readData2, readReg1, readReg2, writeReg, writeBack, RegWrite, reset_n, clk);
 	output reg [`WORD_SIZE-1:0] readData1, readData2;

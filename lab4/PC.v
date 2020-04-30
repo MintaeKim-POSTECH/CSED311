@@ -1,4 +1,4 @@
-`include "opcodes.v"
+`include "macro.v"
 
 module PC (PC_cur, PC_next, reset_n, clk);
 	output reg [`WORD_SIZE-1:0] PC_cur;

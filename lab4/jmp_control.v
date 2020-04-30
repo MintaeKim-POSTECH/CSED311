@@ -1,4 +1,5 @@
-`include "opcodes.v"
+`include "macro.v"
+
 module jmp_control (PC, target, jmp_addr);
 	input [`WORD_SIZE-1:0] PC;
 	input [11:0] target;
