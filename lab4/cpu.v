@@ -13,6 +13,7 @@
 `include "adder.v"
 `include "jmp_control.v"
 `include "control.v"
+`include "micro_control.v"
 
 module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is_halted);
 	// In : num_inst, output_port, is_halted
@@ -49,8 +50,9 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	assign data = (readM ? 16'bz : B);
 
 	// Control Unit
-	wire MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
-	mcode_control control_unit(inst_reg_data, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
+	wire PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
+	wire [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl;
+	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond,PCWrite,IorD,MemRead,MemWrite,IRWrit,PCSource,ALUSrcA,ALUSrcB,RegWrite,WriteDataCtrl,WriteRegCtrl);
 
 	// PC
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
@@ -73,18 +75,19 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 
 	// ALU Source Determination MUX
 	wire [`WORD_SIZE-1:0] alu_op1, alu_op2;
-	// TODO: ALUSrcA, ALUSrcB Implementation
 	// ALUSrcA: 1Bit, ALUSrc B: 2Bit
 	mux16_2to1 mux_a (ALUSrcA, PC_cur, A, alu_op1);
 	mux16_4to1 mux_b (ALUSrcB, B, 16'b0000_0000_0000_0001, imm_extend, , alu_op2);
 
+
 	// ALU Control
 	alu_control alu_con (inst_reg_data, opcode, funcode);
 	
+
 	// ALU
 	wire [`WORD_SIZE-1:0] alu_res;
 	wire bcond;
-	alu alu_1 (opcode, funcode, A, alu_op2, alu_res, bcond);
+	alu alu_1 (opcode, funcode, alu_op1, alu_op2, alu_res, bcond);
 	
 	// Jump Address Calculation
 	wire [`WORD_SIZE-1:0] jump_addr;
@@ -94,7 +97,7 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	mux16_2to1 mux_iord (IorD, PC_cur, ALUOut, address);
 
 	// PC_next Determination
-	mux16_4to1 mux_pc_next (PCSrc, alu_res, ALUOut, jump_addr, , PC_next);
+	mux16_4to1 mux_pc_next (PCSrc,jump_addr, A, alu_res, ALUOut, PC_next);
 
 	// Write Register ID Determination
 	mux2_4to1 mux_wb (WriteRegCtrl, inst_reg_data[9:8], inst_reg_data[7:6], 2'b10, , wb_reg_id);

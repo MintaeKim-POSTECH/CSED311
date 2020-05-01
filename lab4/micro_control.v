@@ -3,6 +3,7 @@
 `include "macro.v"
 
 module mcode_control(inst, reset_n, clk 
+,PCWriteCond
 ,PCWrite
 ,IorD
 ,MemRead
@@ -18,7 +19,7 @@ module mcode_control(inst, reset_n, clk
 	input reset_n, clk;
 	input [`WORD_SIZE-1:0] inst;
 
-	output reg PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
+	output reg PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
 	output reg [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl;
 
 
@@ -28,6 +29,7 @@ module mcode_control(inst, reset_n, clk
 	reg PVSWriteEn;
 
 	initial begin
+		PCWriteCond = 0;
 		PCWrite = 0;
 		IorD = 0;
 		MemRead = 0;
@@ -44,7 +46,8 @@ module mcode_control(inst, reset_n, clk
 	end
 
 	always @(*) begin // Combinational Logic
-		PCWrite = PVSWriteEn;//
+		PCWriteCond=0;
+		PCWrite = 0;//
 		IorD = 0;//
 		MemRead = 0;//
 		MemWrite = 0;//
@@ -59,9 +62,15 @@ module mcode_control(inst, reset_n, clk
 		opcode=inst[15:12];
 		funcode=inst[5:0];
 		
+		//PCWriteCond : 1 for branch instruction in EX state
+		if(opcode<=3&&state==`EX2) PCWriteCond = 1;
 
-		//IorD: True For IF stage, False for load or store in mem stage (default 0)
-		if( state>=`IF1 && state<=`IF4 ) IorD = 1;
+		//PCWrite : 1 for IF4 state and  JAL, JRL instructions in WB state
+		if(state == `IF1) PCWrite = 1;
+		else if(state ==`WB && (opcode ==10 || opcode ==15 && funcode==26)) PCWrite = 1;
+
+		//IorD: 0 For IF stage, 1 for load or store in mem stage (default 0)
+		if( state>=`IF1 && state<=`MEM4 ) IorD = 1;
 
 		//MemRead: True for IF state and Load Instruction in MEM state
 		if ( (opcode==7 && state>=`MEM1) || (state>=`IF1 && state<=`IF4) )begin
@@ -77,11 +86,14 @@ module mcode_control(inst, reset_n, clk
 		if( state>=`IF1 && state<=`IF4 ) IorD = 1;
 
 		//PCSource
-		//00: for JMP, JAL instrucion
-		//01: for JPR and JRL instruction 
+		//00: for JMP, JAL instrucion and IF4 state
+		//01: for JPR and JRL instruction
 		//10: for PC+4 or PC+IMM => when using alu to add pc address
+		//11: take data from ALUOut, for branch condition in EX state
 		if(opcode<=10&&opcode>=9) PCSource=2'b00;
-		else if(opcode==15&&(funcode==25||funcode==26)) PCSource=2'b10;
+		else if(state<=`IF4) PCSource=2'b10;
+		else if(opcode==15&&(funcode==25||funcode==26)) PCSource=2'b01;
+		else if(opcode<=3&&state==`EX2) PCSource=2'b11;
 		
 
 		//ALUSrcA: True at ID for ALU calculation of data in resister
@@ -93,17 +105,14 @@ module mcode_control(inst, reset_n, clk
 
 		//ALUSrcB: 
 		// 00: take 2nd Resister value: PVSWriteEn!=1 and Rtype instruction 
-		// 01: For PC+4 => When PVSWriteEn==1 and not branch instruction
+		// 01: For PC+4 => When IF state 
 		// 10: For Imm value calculation => For I type instruction
-		if(PVSWriteEn==1&&opcode>3) ALUSrcB=2'b01;
-		else if(PVSWriteEn==1&&opcode<=3) ALUSrcB=2'b10;
+		if(state<`IF4) ALUSrcB=2'b01;
+		else if(opcode<=3) ALUSrcB=2'b10;
 		
 		
-		//RegWrite: True for opcode 4~7, 10~14 and False when
-		if (opcode>=4&&opcode<=7 || opcode>=10&&opcode<=15)begin
-			if(opcode==15&&inst[5:0]==25) RegWrite = 0;
-			else RegWrite = 1;
-		end
+		//RegWrite: True for WB state
+		if(state == `WB) RegWrite = 1;
 		
 		//WriteDataCtrl: Determines data to write.
 		//0: ALU_result (default)
