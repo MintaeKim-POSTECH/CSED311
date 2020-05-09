@@ -32,16 +32,11 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	output [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	output is_halted;
 
-
 	// Read & Write
 	reg readM, writeM;
 	
 	// Data Line Wiring
 	wire [`WORD_SIZE-1:0] inst_reg_data;
-
-	// Parameters
-	wire [3:0] opcode;
-	wire [5:0] funcode;
 
 	// Register A, B
 	reg [`WORD_SIZE-1:0] A, B, ALUOut;
@@ -81,13 +76,14 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 
 
 	// ALU Control
-	alu_control alu_con (inst_reg_data, opcode, funcode);
-	
+	wire [3:0] ALUAction;
+	wire [2:0] btype;
+	alu_control alu_con (inst_reg_data, ALUAction, btype);
 
 	// ALU
 	wire [`WORD_SIZE-1:0] alu_res;
 	wire bcond;
-	alu alu_1 (opcode, funcode, alu_op1, alu_op2, alu_res, bcond);
+	alu alu_1 (ALUAction, btype, alu_op1, alu_op2, alu_res, bcond);
 	
 	// Jump Address Calculation
 	wire [`WORD_SIZE-1:0] jump_addr;
