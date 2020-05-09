@@ -32,6 +32,9 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	output [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	output is_halted;
 
+	reg inst_Excuted;
+	reg isWWD;
+
 	// Read & Write
 	reg readM, writeM;
 	
@@ -46,8 +49,10 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 
 	// Control Unit
 	wire PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
-	wire [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl;
-	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond,PCWrite,IorD,MemRead,MemWrite,IRWrit,PCSource,ALUSrcA,ALUSrcB,RegWrite,WriteDataCtrl,WriteRegCtrl);
+	wire [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl, ALUOp;
+	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond,PCWrite,IorD,
+MemRead,MemWrite,IRWrit,PCSource,ALUSrcA,ALUSrcB,RegWrite,
+WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 
 	// PC
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
@@ -93,7 +98,7 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	mux16_2to1 mux_iord (IorD, PC_cur, ALUOut, address);
 
 	// PC_next Determination
-	mux16_4to1 mux_pc_next (PCSrc,jump_addr, A, alu_res, ALUOut, PC_next);
+	mux16_4to1 mux_pc_next (PCSrc,jump_addr, alu_res, ALUOut, , PC_next);
 
 	// Write Register ID Determination
 	mux2_4to1 mux_wb (WriteRegCtrl, inst_reg_data[9:8], inst_reg_data[7:6], 2'b10, , wb_reg_id);
@@ -111,11 +116,11 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	end
 
 	always @(posedge clk) begin
+		if(inst_Excuted) 
 		if (!reset_n) begin
 			mem_reg_data <= 0;
 			readM <= 0;
 			writeM <= 0;
-
 			A <= 0;
 			B <= 0;
 			ALUOut <= 0;

@@ -1,11 +1,11 @@
 `include "macro.v"
 
-module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2);
+module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2,ALUOp);
 	input reset_n, clk;
 		
 	input [`WORD_SIZE-1:0] inst;
 	output reg MemRead, MemWrite, ALUSrc, RegWrite, PCSrc1, PCSrc2;
-	output reg [1:0] WriteDataCtrl, WriteRegCtrl;
+	output reg [1:0] WriteDataCtrl, WriteRegCtrl,ALUOp;
 
 	reg [3:0] opcode;
 	reg [5:0] funcode;
@@ -23,7 +23,8 @@ module mcode_control(inst, reset_n, clk, MemRead, WriteDataCtrl, WriteRegCtrl, M
 		RegWrite = 0;
 		PCSrc1 = 0;
 		PCSrc2 = 0;
-		
+		ALUOp = 0;
+
 		state = `INIT_STATE;
 
 		PVSWriteEn=0;

@@ -11,3 +11,8 @@
 `define MEM4       11
 `define WB         12
 `define HLT        13
+
+
+`define IF_STAGE 0
+`define ID_STAGE 1
+`define EX_STAGE 2

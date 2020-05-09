@@ -14,13 +14,18 @@ module mcode_control(inst, reset_n, clk
 ,ALUSrcB
 ,RegWrite
 ,WriteDataCtrl
-,WriteRegCtrl);
+,WriteRegCtrl
+,ALUOp
+,instExecuted
+,isHalt
+,isWWD
+);
 
 	input reset_n, clk;
 	input [`WORD_SIZE-1:0] inst;
 
-	output reg PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
-	output reg [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl;
+	output reg PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite,instExecuted,isHalt,isWWD;
+	output reg [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl,ALUOp;
 
 
 	reg [3:0] opcode;
@@ -40,6 +45,10 @@ module mcode_control(inst, reset_n, clk
 		RegWrite = 0;
 		WriteDataCtrl = 0;
 		WriteRegCtrl = 0;
+		ALUOp = 0;
+		instExecuted = 0;
+		isHalt = 0;
+		isWWD = 0;
 		state = `INIT_STATE;
 
 		PVSWriteEn=0;
@@ -58,6 +67,10 @@ module mcode_control(inst, reset_n, clk
 		RegWrite = 0;
 		WriteDataCtrl = 0;//
 		WriteRegCtrl = 0;//
+		ALUOp = 0;
+		instExecuted = 0;
+		isHalt = 0;
+		isWWD = 0;
 
 		opcode=inst[15:12];
 		funcode=inst[5:0];
@@ -65,50 +78,51 @@ module mcode_control(inst, reset_n, clk
 		//PCWriteCond : 1 for branch instruction in EX state
 		if(opcode<=3&&state==`EX2) PCWriteCond = 1;
 
-		//PCWrite : 1 for IF4 state and  JAL, JRL instructions in WB state
-		if(state == `IF1) PCWrite = 1;
-		else if(state ==`WB && (opcode ==10 || opcode ==15 && funcode==26)) PCWrite = 1;
+		//PCWrite : 1 for IF4 state and  JAL, JMP instructions in ID state, JRL  in EX??2 state
+		if(state == `IF4) PCWrite = 1;
+		else if(state ==`ID && (opcode ==10 || opcode ==0)) PCWrite = 1;
+ 		else if(state ==`EX2&& (opcode ==15 && funcode==26)) PCWrite = 1;
 
-		//IorD: 0 For IF stage, 1 for load or store in mem stage (default 0)
-		if( state>=`IF1 && state<=`MEM4 ) IorD = 1;
+		//IorD: 1 For IF stage, 1 for load or store in mem stage (default 0)
+		if((state>=`MEM1 && state<=`MEM4)|| (state==`WB && opcode==7)) IorD = 1;
 
 		//MemRead: True for IF state and Load Instruction in MEM state
-		if ( (opcode==7 && state>=`MEM1) || (state>=`IF1 && state<=`IF4) )begin
+		if ( (opcode==7 && state>=`MEM1&&state<=`MEM4) || (state>=`IF1 && state<=`IF4) )begin
 			MemRead = 1;
 		end
 
 		//MemWrite: True for Store Instruction and PVSWriteEn==True 
-		if ( opcode==8 && PVSWriteEn == 1 )begin
+		if ( opcode==8 && state>=`MEM1&&state<=`MEM4)begin
 			MemWrite = 1;
 		end
 
 		//IRWrite: True for IF state only
-		if( state>=`IF1 && state<=`IF4 ) IorD = 1;
+		if( state>=`IF1 && state<=`IF4 ) IRWrite = 1;
 
 		//PCSource
-		//00: for JMP, JAL instrucion and IF4 state
-		//01: for JPR and JRL instruction
-		//10: for PC+4 or PC+IMM => when using alu to add pc address
-		//11: take data from ALUOut, for branch condition in EX state
-		if(opcode<=10&&opcode>=9) PCSource=2'b00;
-		else if(state<=`IF4) PCSource=2'b10;
+		//00: jump address,   for JMP, JAL instrucion and IF4 state
+		//01: ALU Result      for PC+4    JPR and JRL instruction
+		//10: ALU Out         for  PC+IMM => For branch inst
+		if(state<=`IF4) PCSource=2'b01;
 		else if(opcode==15&&(funcode==25||funcode==26)) PCSource=2'b01;
-		else if(opcode<=3&&state==`EX2) PCSource=2'b11;
-		
+		else if(opcode<=3&&state==`EX2) PCSource=2'b10;
+		else if(opcode<=10||opcode>=9) PCSource=2'b00;
+
 
 		//ALUSrcA: True at ID for ALU calculation of data in resister
 		// False for WWD at ID state
-		if(state>=`ID&&state<`MEM4)begin 
+		if(state>=`EX1)begin 
 			ALUSrcA=1;
-			if(opcode==15&&funcode==28)ALUSrcA=0;
 		end
 
 		//ALUSrcB: 
-		// 00: take 2nd Resister value: PVSWriteEn!=1 and Rtype instruction 
-		// 01: For PC+4 => When IF state 
+		//mux16_4to1 mux_b (ALUSrcB, B, 16'b0000_0000_0000_0001, imm_extend, , alu_op2);
+		// 00: take 2nd Resister value: Rtype instruction 
+		// 01: For PC+1 => When IF state 
 		// 10: For Imm value calculation => For I type instruction
-		if(state<`IF4) ALUSrcB=2'b01;
-		else if(opcode<=3) ALUSrcB=2'b10;
+		if(state<=`IF4) ALUSrcB=2'b01;
+		else if(state==`ID) ALUSrcB=2'b10;
+		else if(opcode<=8&&opcode>=4)  ALUSrcB=2'b10;
 		
 		
 		//RegWrite: True for WB state
@@ -130,7 +144,23 @@ module mcode_control(inst, reset_n, clk
 		else if (opcode==10||(opcode==15&&funcode==26)) WriteRegCtrl = 2;
 		else WriteRegCtrl = 0;
 
+		//ALUOp
+		if(state<=`IF4 && state>=`IF1) ALUOp=`IF_STAGE;
+		else if(state==`ID) ALUOp=`ID_STAGE;
+		else if(state<=`EX2 && state>=`EX1) ALUOp=`EX_STAGE;
+		
+		//instExecuted
+		if(opcode==15&& funcode==29&&state==`ID) instExecuted = 1;
+		else if(state==`MEM4&&opcode == 8) instExecuted = 1;
+		else if(opcode==15 && (funcode==28 || funcode==25) && state==`EX2) instExecuted = 1;
+		else if(opcode<=3&&state==`EX2) instExecuted = 1;
+		else if(state==`WB) instExecuted = 1;
 
+		//isHalt
+		if(state==`HLT) isHalt=1;
+
+		//isWWD
+		if(state==`EX2&&opcode==15&&funcode==28) isWWD=1;
 	end
 
 	always @(posedge clk) begin // Sequential Logic
@@ -139,35 +169,29 @@ module mcode_control(inst, reset_n, clk
 		end
 		else begin	
 			case (state)
-				`IF4:
+				`ID: begin
 					// HLT: Goto HLT
 					if (opcode == 15 && funcode == 29) state <= `HLT;
+
+					// JMP: Goto IF1
+					if (opcode == 10) begin 
+						state <= `IF1;
+						PVSWriteEn <= 1;
+					end
 					// JAL: Goto WB
 					else if (opcode == 9) state <= `WB;
-					// JMP: Goto IF1
-					else if (opcode == 10) begin 
-						state <= `IF1;
-						PVSWriteEn <= 1;
-					end
 					else state <= (state + 1);
-				`ID:
-					// WWD & JPR: Goto IF1
-					if ((opcode == 15) && (funcode == 25 || funcode == 28)) begin
-						state <= `IF1;
-						PVSWriteEn <= 1;
-					end
-					// JRL: Goto WB
-					else if (opcode == 15 && funcode == 26) state <= `WB;
-					else state <= (state + 1);
+				end
 				`EX2:
-					// Bxx : Goto IF1
-					if (opcode <= 3) begin
+					// WWD & JPR &Bxx: go to IF1
+					if ((opcode == 15) && (funcode == 25 || funcode == 28)||opcode <= 3) begin
 						state <= `IF1;
 						PVSWriteEn <= 1;
 					end
 					// LWD & SWD: Goto MEM1
 					else if (opcode == 7 || opcode == 8) state <= (state + 1);
 					else state <= `WB;
+
 				`MEM4:
 					// SWD: Goto IF1
 					if (opcode == 8) begin
