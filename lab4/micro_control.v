@@ -161,6 +161,7 @@ module mcode_control(inst, reset_n, clk
 
 	always @(posedge clk) begin // Sequential Logic
 		$display ("-- State : %d / inst : %h --", state, inst);
+		$display ("-- opcode = %d, funcode = %d --", opcode, funcode);
 		if (!reset_n) begin
 			state <= `INIT_STATE;
 		end
@@ -190,11 +191,11 @@ module mcode_control(inst, reset_n, clk
 				`MEM4:
 					// SWD: Goto IF1
 					if (opcode == 8) begin
-						PVSWriteEn <= 1;
+						state <= `IF1;
 					end
 					else state <= (state + 1);
 				`WB: begin
-					PVSWriteEn <= 1;
+					state <= `IF1;
 				end
 				`HLT:   // TODO: Do Nothing
 					;

@@ -12,7 +12,6 @@ module PC (PC_cur, PC_next, PC_update, reset_n, clk);
 	end
 
 	always @(posedge clk) begin
-		$display ("PC_cur : %h, PC_next : %h", PC_cur, PC_next);
 		if (!reset_n) begin
 			// $display ("CPU-RESET cur: %d", PC_cur);
 			PC_cur <= 0;

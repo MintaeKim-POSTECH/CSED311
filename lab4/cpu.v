@@ -131,7 +131,13 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,instExcuted,is_halted,isWWD);
 			num_inst <= 0;
 		end
 		else begin
+			$display ("---");
 			$display ("inst# : %h, output_port : %d", num_inst, output_port);
+			$display ("PC_next : %h, PC_cur : %h, data : %h, inst : %h, address : %h", PC_next, PC_cur, data, inst_reg_data, address);
+			$display ("rs1 : %d, rs2 : %d, wr : %d, wd : %h", inst_reg_data[11:10], inst_reg_data[9:8], wb_reg_id, wd_wire);
+			$display ("regdata1 : %d, regdata2 : %d, A : %d, B : %d", reg_data1, reg_data2, A, B);
+			$display ("op1 : %d, op2 : %d, bcond : %d, alu_res : %d, alu_out : %d", alu_op1, alu_op2, bcond, alu_res, ALUOut); 
+			$display ("==");
 			mem_reg_data <= data;
 			readM <= MemRead;
 			writeM <= MemWrite;
