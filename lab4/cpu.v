@@ -146,7 +146,7 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,instExecuted,is_halted,isWWD);
 			B <= reg_data2;
 			ALUOut <= alu_res;
 
-			if (isWWD) output_port <= ALUOut;
+			if (isWWD) output_port <= alu_res;
 			if (instExecuted) num_inst <= (num_inst + 1);
 		end
 	end

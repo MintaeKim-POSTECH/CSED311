@@ -4,10 +4,10 @@ module alu(ALUAction, btype, A, B, result, bcond);
 	input [3:0] ALUAction;
 	input [2:0] btype;
 
-	input [`WORD_SIZE-1:0] A;
-	input [`WORD_SIZE-1:0] B;
+	input signed [`WORD_SIZE-1:0] A;
+	input signed [`WORD_SIZE-1:0] B;
 
-	output reg [`WORD_SIZE-1:0] result;
+	output reg signed [`WORD_SIZE-1:0] result;
 	output reg bcond;
 
 	initial begin

@@ -82,20 +82,21 @@ module mcode_control(inst, reset_n, clk
  		else if(state ==`EX2&& (opcode ==15 && funcode==26)) PCWrite = 1;
 
 		//IorD: 1 For IF stage, 1 for load or store in mem stage (default 0)
-		if((state>=`MEM1 && state<=`MEM4)|| (state==`WB && opcode==7)) IorD = 1;
+		if((state>=`EX2 && state<=`MEM4)|| (state==`WB && opcode==7)) IorD = 1;
 
 		//MemRead: True for IF state and Load Instruction in MEM state
-		if ( (opcode==7 && state>=`MEM1&&state<=`MEM4) || (state>=`IF1 && state<=`IF4) )begin
+		//Theoretically: It should be end ~ IF4, but we'll make an approximation to IF1 ~ IF4
+		if ( (opcode==7 && state>=`EX2&&state<=`MEM3) || (state<=`IF4) )begin
 			MemRead = 1;
 		end
 
 		//MemWrite: True for Store Instruction and PVSWriteEn==True 
-		if ( opcode==8 && state>=`MEM1&&state<=`MEM4)begin
+		if ( opcode==8 && state>=`EX2&&state<=`MEM3)begin
 			MemWrite = 1;
 		end
 
 		//IRWrite: True for IF state only
-		if( state>=`IF1 && state<=`IF4 ) IRWrite = 1;
+		if(state == `IF4) IRWrite = 1;
 
 		//PCSource
 		//00: jump address,   for JMP, JAL instrucion and IF4 state
@@ -109,7 +110,7 @@ module mcode_control(inst, reset_n, clk
 
 		//ALUSrcA: True at ID for ALU calculation of data in resister
 		// False for WWD at ID state
-		if(state>=`EX1)begin 
+		if(state>=`EX2)begin 
 			ALUSrcA=1;
 		end
 
@@ -119,9 +120,8 @@ module mcode_control(inst, reset_n, clk
 		// 01: For PC+1 => When IF state 
 		// 10: For Imm value calculation => For I type instruction
 		if(state<=`IF4) ALUSrcB=2'b01;
-		else if(state==`ID) ALUSrcB=2'b10;
+		else if(state==`ID || state == `EX1) ALUSrcB=2'b10;
 		else if(opcode<=8&&opcode>=4)  ALUSrcB=2'b10;
-		
 		
 		//RegWrite: True for WB state
 		if(state == `WB) RegWrite = 1;
