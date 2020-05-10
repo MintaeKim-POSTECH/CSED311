@@ -131,6 +131,7 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,instExecuted,is_halted,isWWD);
 			num_inst <= 0;
 		end
 		else begin
+			// $display ("inst# : %h, inst : %h, PC_cur : %h", num_inst, inst_reg_data, PC_cur);
 			$display ("---");
 			$display ("inst# : %h, output_port : %d", num_inst, output_port);
 			$display ("PC_next : %h, PC_cur : %h, data : %h, inst : %h, address : %h", PC_next, PC_cur, data, inst_reg_data, address);
