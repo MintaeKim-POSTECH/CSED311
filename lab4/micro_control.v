@@ -100,7 +100,7 @@ module mcode_control(inst, reset_n, clk
 
 		//PCSource
 		//00: jump address,   for JMP, JAL instrucion and IF4 state
-		//01: ALU Result      for PC+4    JPR and JRL instruction
+		//01: ALU Result      for PC+1    JPR and JRL instruction
 		//10: ALU Out         for  PC+IMM => For branch inst
 		if(state<=`IF4) PCSource=2'b01;
 		else if(opcode==15&&(funcode==25||funcode==26)) PCSource=2'b01;
