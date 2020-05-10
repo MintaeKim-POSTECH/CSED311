@@ -78,8 +78,10 @@ module mcode_control(inst, reset_n, clk
 
 		//PCWrite : 1 for IF4 state and  JAL, JMP instructions in ID state, JRL  in EX??2 state
 		if(state == `IF4) PCWrite = 1;
-		else if(state ==`ID && (opcode ==10 || opcode ==9)) PCWrite = 1;
- 		else if(state ==`EX2&& (opcode ==15 && funcode==26)) PCWrite = 1;
+		else if(state ==`ID && opcode ==9) PCWrite = 1;
+		else if(state == `WB && opcode == 10) PCWrite = 1;
+		else if (state == `EX2 && opcode == 15 && funcode == 25) PCWrite = 1;
+ 		else if(state ==`WB && (opcode ==15 && funcode==26)) PCWrite = 1;
 
 		//IorD: 1 For IF stage, 1 for load or store in mem stage (default 0)
 		if((state>=`EX2 && state<=`MEM4)|| (state==`WB && opcode==7)) IorD = 1;
@@ -103,7 +105,8 @@ module mcode_control(inst, reset_n, clk
 		//01: ALU Result      for PC+1    JPR and JRL instruction
 		//10: ALU Out         for  PC+IMM => For branch inst
 		if(state<=`IF4) PCSource=2'b01;
-		else if(opcode==15&&(funcode==25||funcode==26)) PCSource=2'b01;
+		else if(opcode==15&&funcode==25) PCSource=2'b01;
+		else if (opcode == 15 && funcode == 26) PCSource=2'b10;
 		else if(opcode<=3&&state==`EX2) PCSource=2'b10;
 		else if(opcode<=10||opcode>=9) PCSource=2'b00;
 
