@@ -51,7 +51,7 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	
 	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond, PCWrite, IorD,
 MemRead,MemWrite,IRWrite,PCSource,ALUSrcA,ALUSrcB,RegWrite,
-WriteDataCtrl,WriteRegCtrl,ALUOp,instExcuted,is_halted,isWWD);
+WriteDataCtrl,WriteRegCtrl,ALUOp,instExecuted,is_halted,isWWD);
 
 	// PC
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;

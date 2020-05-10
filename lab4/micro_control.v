@@ -67,6 +67,8 @@ module mcode_control(inst, reset_n, clk
 		WriteRegCtrl = 0;//
 		ALUOp = 0;
 		instExecuted = 0;
+		isHalt = 0;
+		isWWD = 0;
 
 		opcode=inst[15:12];
 		funcode=inst[5:0];
