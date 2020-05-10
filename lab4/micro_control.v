@@ -149,6 +149,7 @@ module mcode_control(inst, reset_n, clk
 		
 		//instExecuted
 		if(opcode==15&& funcode==29&&state==`ID) instExecuted = 1;
+		else if (opcode == 9 && state == `ID) instExecuted = 1;
 		else if(state==`MEM4&&opcode == 8) instExecuted = 1;
 		else if(opcode==15 && (funcode==28 || funcode==25) && state==`EX2) instExecuted = 1;
 		else if(opcode<=3&&state==`EX2) instExecuted = 1;
