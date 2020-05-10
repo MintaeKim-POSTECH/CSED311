@@ -12,7 +12,7 @@
 `include "imm_gen.v"
 `include "adder.v"
 `include "jmp_control.v"
-`include "control.v"
+// `include "control.v"
 `include "micro_control.v"
 
 module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is_halted);
@@ -28,12 +28,9 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 
 	inout [`WORD_SIZE-1:0] data;
 
-	output [`WORD_SIZE-1:0] num_inst;	// number of instruction during execution (for debuging & testing purpose)
-	output [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
+	output reg [`WORD_SIZE-1:0] num_inst;	// number of instruction during execution (for debuging & testing purpose)
+	output reg [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	output is_halted;
-
-	reg inst_Excuted;
-	reg isWWD;
 
 	// Read & Write
 	reg readM, writeM;
@@ -48,16 +45,21 @@ module cpu(clk, reset_n, readM, writeM, address, data, num_inst, output_port, is
 	assign data = (readM ? 16'bz : B);
 
 	// Control Unit
-	wire PCWriteCond ,PCWrite,IorD,MemRead,MemWrite,IRWrite,ALUSrcA,RegWrite;
+	wire PCWriteCond, PCWrite, IorD, MemRead, MemWrite, IRWrite, ALUSrcA, RegWrite;
+	wire instExecuted, isWWD;
 	wire [1:0] PCSource,ALUSrcB,WriteDataCtrl, WriteRegCtrl, ALUOp;
-	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond,PCWrite,IorD,
-MemRead,MemWrite,IRWrit,PCSource,ALUSrcA,ALUSrcB,RegWrite,
-WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
+	
+	mcode_control microCode_control(inst_reg_data, reset_n, clk, PCWriteCond, PCWrite, IorD,
+MemRead,MemWrite,IRWrite,PCSource,ALUSrcA,ALUSrcB,RegWrite,
+WriteDataCtrl,WriteRegCtrl,ALUOp,instExcuted,is_halted,isWWD);
 
 	// PC
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
 	wire PC_update;
-	// TODO: PC_update implementation
+	wire PC_sem;
+	wire bcond;
+	and and_op(PC_sem, PCWriteCond, bcond);
+	or or_op(PC_update, PC_sem, PCWrite);
 	PC pc (PC_cur, PC_next, PC_update, reset_n, clk);
 
 	// Register
@@ -79,15 +81,13 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 	mux16_2to1 mux_a (ALUSrcA, PC_cur, A, alu_op1);
 	mux16_4to1 mux_b (ALUSrcB, B, 16'b0000_0000_0000_0001, imm_extend, , alu_op2);
 
-
 	// ALU Control
 	wire [3:0] ALUAction;
 	wire [2:0] btype;
-	alu_control alu_con (inst_reg_data, ALUAction, btype);
+	alu_control alu_con (inst_reg_data, ALUOp, ALUAction, btype);
 
 	// ALU
 	wire [`WORD_SIZE-1:0] alu_res;
-	wire bcond;
 	alu alu_1 (ALUAction, btype, alu_op1, alu_op2, alu_res, bcond);
 	
 	// Jump Address Calculation
@@ -98,13 +98,13 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 	mux16_2to1 mux_iord (IorD, PC_cur, ALUOut, address);
 
 	// PC_next Determination
-	mux16_4to1 mux_pc_next (PCSrc,jump_addr, alu_res, ALUOut, , PC_next);
+	mux16_4to1 mux_pc_next (PCSource, jump_addr, alu_res, ALUOut, , PC_next);
 
 	// Write Register ID Determination
 	mux2_4to1 mux_wb (WriteRegCtrl, inst_reg_data[9:8], inst_reg_data[7:6], 2'b10, , wb_reg_id);
 	
 	// Write Data Determination
-	mux16_4to1 mux_wd(WriteDataCtrl, alu_res, mem_reg_data, PC_cur, 16'b0, wd_wire);
+	mux16_4to1 mux_wd(WriteDataCtrl, ALUOut, mem_reg_data, PC_cur, , wd_wire);
 
 	initial begin // Initial Logic
 		mem_reg_data = 0;
@@ -113,10 +113,12 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 		A = 0;
 		B = 0;
 		ALUOut = 0;
+
+		num_inst = 0;
+		output_port = 16'bx;
 	end
 
 	always @(posedge clk) begin
-		if(inst_Excuted) 
 		if (!reset_n) begin
 			mem_reg_data <= 0;
 			readM <= 0;
@@ -124,8 +126,12 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 			A <= 0;
 			B <= 0;
 			ALUOut <= 0;
+
+			output_port <= 16'bx;
+			num_inst <= 0;
 		end
 		else begin
+			$display ("inst# : %h, output_port : %d", num_inst, output_port);
 			mem_reg_data <= data;
 			readM <= MemRead;
 			writeM <= MemWrite;
@@ -133,6 +139,9 @@ WriteDataCtrl,WriteRegCtrl,ALUOp,inst_Excuted,is_halted,isWWD);
 			A <= reg_data1;
 			B <= reg_data2;
 			ALUOut <= alu_res;
+
+			if (isWWD) output_port <= ALUOut;
+			if (instExecuted) num_inst <= (num_inst + 1);
 		end
 	end
 																													  

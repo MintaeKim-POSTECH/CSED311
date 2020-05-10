@@ -8,13 +8,14 @@ module PC (PC_cur, PC_next, PC_update, reset_n, clk);
 	input reset_n, clk;
 
 	initial begin
-		PC_cur = -1;
+		PC_cur = 0;
 	end
 
 	always @(posedge clk) begin
+		$display ("PC_cur : %h, PC_next : %h", PC_cur, PC_next);
 		if (!reset_n) begin
 			// $display ("CPU-RESET cur: %d", PC_cur);
-			PC_cur <= -1;
+			PC_cur <= 0;
 		end
 		else begin
 			if (PC_update) PC_cur <= PC_next;

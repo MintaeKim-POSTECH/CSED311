@@ -50,8 +50,6 @@ module mcode_control(inst, reset_n, clk
 		isHalt = 0;
 		isWWD = 0;
 		state = `INIT_STATE;
-
-		PVSWriteEn=0;
 	end
 
 	always @(*) begin // Combinational Logic
@@ -69,8 +67,6 @@ module mcode_control(inst, reset_n, clk
 		WriteRegCtrl = 0;//
 		ALUOp = 0;
 		instExecuted = 0;
-		isHalt = 0;
-		isWWD = 0;
 
 		opcode=inst[15:12];
 		funcode=inst[5:0];
@@ -80,7 +76,7 @@ module mcode_control(inst, reset_n, clk
 
 		//PCWrite : 1 for IF4 state and  JAL, JMP instructions in ID state, JRL  in EX??2 state
 		if(state == `IF4) PCWrite = 1;
-		else if(state ==`ID && (opcode ==10 || opcode ==0)) PCWrite = 1;
+		else if(state ==`ID && (opcode ==10 || opcode ==9)) PCWrite = 1;
  		else if(state ==`EX2&& (opcode ==15 && funcode==26)) PCWrite = 1;
 
 		//IorD: 1 For IF stage, 1 for load or store in mem stage (default 0)
@@ -164,6 +160,7 @@ module mcode_control(inst, reset_n, clk
 	end
 
 	always @(posedge clk) begin // Sequential Logic
+		$display ("-- State : %d / inst : %h --", state, inst);
 		if (!reset_n) begin
 			state <= `INIT_STATE;
 		end
@@ -174,19 +171,17 @@ module mcode_control(inst, reset_n, clk
 					if (opcode == 15 && funcode == 29) state <= `HLT;
 
 					// JMP: Goto IF1
-					if (opcode == 10) begin 
+					if (opcode == 9) begin 
 						state <= `IF1;
-						PVSWriteEn <= 1;
 					end
 					// JAL: Goto WB
-					else if (opcode == 9) state <= `WB;
+					else if (opcode == 10) state <= `WB;
 					else state <= (state + 1);
 				end
 				`EX2:
 					// WWD & JPR &Bxx: go to IF1
 					if ((opcode == 15) && (funcode == 25 || funcode == 28)||opcode <= 3) begin
 						state <= `IF1;
-						PVSWriteEn <= 1;
 					end
 					// LWD & SWD: Goto MEM1
 					else if (opcode == 7 || opcode == 8) state <= (state + 1);
@@ -195,12 +190,10 @@ module mcode_control(inst, reset_n, clk
 				`MEM4:
 					// SWD: Goto IF1
 					if (opcode == 8) begin
-						state <= `IF1;
 						PVSWriteEn <= 1;
 					end
 					else state <= (state + 1);
 				`WB: begin
-					state <= `IF1;
 					PVSWriteEn <= 1;
 				end
 				`HLT:   // TODO: Do Nothing
