@@ -34,7 +34,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WORD_SIZE-1:0] data2;
 
 	output [`WORD_SIZE-1:0] num_inst;
-	wire [`WORD_SIZE-1:0] num_inst;D:/CSED311/lab5/cpu.v
+	wire [`WORD_SIZE-1:0] num_inst;
 	output [`WORD_SIZE-1:0] output_port;
 	wire [`WORD_SIZE-1:0] output_port;
 	output is_halted;
@@ -50,6 +50,27 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WB_SIG_COUNT] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
 	wire [`M_SIG_COUNT] M_sig_ID, M_sig_EX, M_sig_M;
 	wire [`EX_SIG_COUNT] EX_sig_ID, EX_sig_EX;
+
+	// Control Wire: WB Stage
+	wire isInst;
+	assign isInst = WB_sig_WB[`WB_ISINST];
+	
+	assign is_halted = WB_sig_WB[`WB_ISHALT];
+	wire isWWD;
+	assign isWWD = WB_sig_WB[`WB_ISWWD];
+	wire RegWrite;
+	assign RegWrite = WB_sig_WB[`WB_REGWRITE];
+	wire MemtoReg;
+	assign MemtoReg = WB_sig_WB[`WB_MEMTOREG];
+	wire Reg2Save;
+	assign Reg2Save = WB_sig_WB[`WB_REG2SAVE];
+
+	// Control Wire: M (MEM) Stage
+	// ALUOp: opcode_EX + funcode_EX
+	wire MemRead;
+	assign MemRead = M_sig_M[`M_MEMREAD];
+	wire MemWrite;
+	assign MemWrite = M_sig_M[`M_MEMWRITE];
 
 	// Control Wire: EX Stage
 	// ALUOp: opcode_EX + funcode_EX
@@ -139,7 +160,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	
 	// Register
 	wire [`WORD_SIZE-1:0] readData1, readData2;
-	wire [`REG_BITS-1:0] readReg1, readReg2;
 	wire [`WORD_SIZE-1:0] writeData;
 
 	register_cpu register (clk, reset_n, RegWrite, readData1, readData2, rs_ID, rt_ID, writeReg_WB, writeData);
@@ -150,14 +170,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// Branch Prediction Calculation
 	wire isTaken;
 	bcond_calc_unit bcond_unit (isTaken, opcode, funcode, readData1, readData2);
-
-	// Flushing Unit: Prediction Failed
-	// TODO: Implement
-	pred_flush_unit ();
-
-	// Hazard Detection Unit
-	// TODO: Implement
-	haz_detect_unit hdu (hazard, rs, rt, ___); 
 
 	// ID/EX
 	wire [`WORD_SIZE-1:0] readData1_latch, readData2_latch, imm_val_latch;
@@ -178,12 +190,39 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WORD_SIZE-1:0] ALURes;
 	alu alu_cpu (ALUAction, ALURes, readData1_latch, ALUOp2);
 	
-	EX_MEM ex_mem_latch (clk, reset_n, WB_sig_M, M_sig_M, ALURes_latch, writeData_latch, writeReg_M, PC_M,
+	// EX/M
+	wire [`WORD_SIZE-1:0] ALURes_latch, writeData_latch;
+	EX_M ex_m_latch (clk, reset_n, WB_sig_M, M_sig_M, ALURes_latch, writeData_latch, writeReg_M, PC_M,
 					WB_sig_EX, M_sig_EX, ALURes, readData2_latch, writeReg_EX, PC_EX);
 
 	//// M (MEM) Stage ////
+	assign address2 = ALURes_latch;
+	assign data2 = ((readM2 == 1) ? 16'bz : writeData_latch);
+
+	// M/WB
+	wire [`WORD_SIZE-1:0] writeReg_WB_candidate;
+	M_WB m_wb_latch (clk, reset_n, WB_sig_WB, Mdata_latch, addr_latch, writeReg_WB_candidate, PC_WB, 
+					WB_sig_M, data2, ALURes_latch, writeReg_M, PC_M);
+
+	//// WB Stage ////
+	wire [`WORD_SIZE-1:0] writeData_candidate;
+	mux16_2to1 mux_memtoreg (MemtoReg, writeData_candidate, addr_latch, Mdata_latch);
+
+	mux16_2to1 mux_wd (Reg2Save, writeData, writeData_candidate, PC_WB);
+	mux2_2to1 mux_wr (Reg2Save, writeReg_WB, writeReg_WB_candidate, 2'b10);
 	
-	
+	// Output Port
+
+	// Num Inst
+
+	// Hazard Detection Unit
+	// TODO: Implement
+	haz_detect_unit hdu (hazard, rs, rt, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB); 
+
+	// Flushing Unit: Prediction Failed
+	// TODO: Implement
+	pred_flush_unit ();
+
 	initial begin // Initial Logic
 		mem_reg_data = 0;
 		readM = 0;

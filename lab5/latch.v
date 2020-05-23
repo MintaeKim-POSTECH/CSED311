@@ -79,7 +79,7 @@ module ID_EX (clk, reset_n, o_WB, o_M, o_EX, o_readData1, o_readData2, o_immVal,
 endmodule
 
 
-module EX_MEM (clk, reset_n, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc, i_WB, i_M, i_ALURes, i_writeData, i_writeReg, i_pc);
+module EX_M (clk, reset_n, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc, i_WB, i_M, i_ALURes, i_writeData, i_writeReg, i_pc);
 	input clk, reset_n;
 
 	output reg [`WB_SIG_COUNT-1:0] o_WB;
@@ -122,7 +122,7 @@ module EX_MEM (clk, reset_n, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc,
 endmodule
 
 
-module MEM_WB (clk, reset_n, o_WB, o_Mdata, o_addr, o_writeReg, o_pc, i_WB, i_Mdata, i_addr, i_writeReg, i_pc);
+module M_WB (clk, reset_n, o_WB, o_Mdata, o_addr, o_writeReg, o_pc, i_WB, i_Mdata, i_addr, i_writeReg, i_pc);
 	input clk, reset_n;
 
 	output reg [`WB_SIG_COUNT-1:0] o_WB;
