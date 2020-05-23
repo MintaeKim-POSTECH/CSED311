@@ -1,11 +1,10 @@
 `include "macro.v"
 
-module PC (clk, reset_n, hazard, PC_cur, PC_next, PC_update);
+module PC (clk, reset_n, hazard, PC_cur, PC_next);
 	input reset_n, clk, hazard;
 	
 	output reg [`WORD_SIZE-1:0] PC_cur;
 	input [`WORD_SIZE-1:0] PC_next;
-	input PC_update;
 
 	initial begin
 		PC_cur = -1;
@@ -18,7 +17,7 @@ module PC (clk, reset_n, hazard, PC_cur, PC_next, PC_update);
 		end
 		// TODO: Consider Hazard
 		else begin
-			if (PC_update) PC_cur <= PC_next;
+			PC_cur <= PC_next;
 		end
 	end
 

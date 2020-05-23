@@ -9,7 +9,7 @@
 `define WORD_SIZE         16
 `define NUM_REGS           4
 
-`define CONT_SIG_COUNT    23 // WB_SIG_COUNT + M_SIG_COUNT + EX_SIG_COUNT + ID_SIG_COUNT
+`define CONT_SIG_COUNT    22 // WB_SIG_COUNT + M_SIG_COUNT + EX_SIG_COUNT + ID_SIG_COUNT
 `define PROPA_SIG_COUNT   19 // WB_SIG_COUNT + M_SIG_COUNT + EX_SIG_COUNT
 
 
@@ -48,10 +48,15 @@
 
 
 //// ID Stage ////
-`define ID_SIG_COUNT       4
-// 3-2: PCSrc
-`define ID_PCSRC           3
-// 1: RegWrite
-`define ID_REGWRITE        1
+`define ID_SIG_COUNT       3
+// 2-1: PCSrc
+`define ID_PCSRC           2
 // 0: RegDest
 `define ID_REGDEST         0
+
+
+// For Comfort (Ease of Calculation)
+`define WB_BASE           16
+`define M_BASE            14
+`define EX_BASE            3
+`define ID_BASE            0

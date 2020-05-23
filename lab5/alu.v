@@ -1,5 +1,14 @@
 `include "macro.v"	   
 
+module adder (res, a, b);
+	output reg [`WORD_SIZE-1:0] res;
+	input [`WORD_SIZE-1:0] a, b;
+
+	always @(*) begin
+		res = (a + b);
+	end
+endmodule
+
 module alu(ALUAction, result, A, B);
 	input [`ALU_ACTION_BITS-1:0] ALUAction;
 
@@ -10,7 +19,6 @@ module alu(ALUAction, result, A, B);
 
 	initial begin
 		result = 0;
-		bcond = 0;
 	end
 
 	always @(*) begin

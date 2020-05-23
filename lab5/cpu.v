@@ -1,9 +1,8 @@
 `timescale 1ns/1ns
 
 `include "macro.v"
-`include "mux.v"`
+`include "mux.v"
 `include "PC.v"
-`include "adder.v"
 `include "latch.v"
 `include "unit.v"
 `include "control.v"
@@ -42,6 +41,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	
 	// TODO : Implement your pipelined CPU!
 	
+	// readM, writeM Registers
+	reg readM2_r, writeM2_r;
+	assign readM2 = readM2_r;
+	assign writeM2 = writeM2_r;
+
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
 	wire [`PROPA_SIG_COUNT-1:0] control_signals_propagation, next_signals;
@@ -84,8 +88,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// Control Wire: ID Stage
 	wire [1:0] PCSrc;
 	assign PCSrc = control_signals[`ID_PCSRC:`ID_PCSRC-1];
-	wire RegWrite;
-	assign RegWrite = control_signals[`ID_REGWRITE];
 	wire RegDest;
 	assign RegDest = control_signals[`ID_REGDEST];
 
@@ -212,8 +214,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	mux2_2to1 mux_wr (Reg2Save, writeReg_WB, writeReg_WB_candidate, 2'b10);
 	
 	// Output Port
-
+	reg [`WORD_SIZE-1:0] output_port_reg;
+	assign output_port = output_port_reg;
 	// Num Inst
+	reg [`WORD_SIZE-1:0] num_inst_reg;
+	assign num_inst = num_inst_reg;
 
 	// Hazard Detection Unit
 	// TODO: Implement
@@ -224,31 +229,22 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	pred_flush_unit ();
 
 	initial begin // Initial Logic
-		mem_reg_data = 0;
-		readM = 0;
-		writeM = 0;
-		A = 0;
-		B = 0;
-		ALUOut = 0;
+		readM2_r = 0;
+		writeM2_r = 0;
 
-		num_inst = 0;
-		output_port = 16'bx;
+		num_inst_reg = 0;
+		output_port_reg = 16'bx;
 	end
 
 	always @(posedge clk) begin
 		if (!reset_n) begin
-			mem_reg_data <= 0;
-			readM <= 0;
-			writeM <= 0;
-			A <= 0;
-			B <= 0;
-			ALUOut <= 0;
+			readM2_r <= 0;
+			writeM2_r <= 0;
 
-			output_port <= 16'bx;
-			num_inst <= 0;
+			num_inst_reg <= 0;
+			output_port_reg <= 16'bx;
 		end
 		else begin
-			$display ("inst# : %h, inst : %h, PC_cur : %h", num_inst, inst_reg_data, PC_cur);
 			//$display ("---");
 			//$display ("inst# : %h, output_port : %d", num_inst, output_port);
 			//$display ("PC_next : %h, PC_cur : %h, data : %h, inst : %h, address : %h", PC_next, PC_cur, data, inst_reg_data, address);
@@ -257,16 +253,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 			//$display ("regdata1 : %d, regdata2 : %d, A : %d, B : %d", reg_data1, reg_data2, A, B);
 			//$display ("op1 : %d, op2 : %d, bcond : %d, alu_res : %d, alu_out : %d", alu_op1, alu_op2, bcond, alu_res, ALUOut); 
 			//$display ("==");
-			mem_reg_data <= data;
-			readM <= MemRead;
-			writeM <= MemWrite;
+			readM2 <= MemRead;
+			writeM2 <= MemWrite;
 
-			A <= reg_data1;
-			B <= reg_data2;
-			ALUOut <= alu_res;
-
-			if (isWWD) output_port <= alu_res;
-			if (instExecuted) num_inst <= (num_inst + 1);
+			if (isWWD) output_port <= writeData;
+			if (isInst) num_inst_reg <= (num_inst_reg + 1);
 		end
 	end
 	
