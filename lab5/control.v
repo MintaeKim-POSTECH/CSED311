@@ -1,11 +1,10 @@
 `include "opcodes.v"
 
-module control(inst, RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2);
-	input [`WORD_SIZE-1:0] inst;
+module control(RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2, opcode, funcode);
 	output reg RegDest, MemRead, MemtoReg, MemWrite, ALUSrc, RegWrite, Reg2Save, PCSrc1, PCSrc2;
 
-	reg [3:0] opcode;
-	reg [5:0] funcode;
+	input [`OPCODE_BITS-1:0] opcode;
+	input [`FUNCODE_BITS-1:0] funcode;
 
 	initial begin
 		RegDest = 0;

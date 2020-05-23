@@ -83,7 +83,7 @@ module EX_MEM (clk, reset_n, o_WB, o_M, o_ALURes, o_ALUOp2, o_wd, i_WB, i_M, i_A
 
 	output reg [`WB_SIG_COUNT-1:0] o_WB;
 	output reg [`M_SIG_COUNT-1:0] o_M;
-	
+
 	output reg [`WORD_SIZE-1:0] o_ALURes, o_ALUOp2, o_wd;
 
 	input [`WB_SIG_COUNT-1:0] i_WB;
@@ -92,22 +92,59 @@ module EX_MEM (clk, reset_n, o_WB, o_M, o_ALURes, o_ALUOp2, o_wd, i_WB, i_M, i_A
 	input [`WORD_SIZE-1:0] i_ALURes, i_ALUOp2, i_wd;
 
 	initial begin
-		o_pc = 0;
-		o_Idata = 0;
+		o_WB = 0;
+		o_M = 0;
+		o_ALURes = 0;
+		o_ALUOp2 = 0;
+		o_wd = 0;
 	end
 	
 	always @(posedge clk) begin
 		if (!reset_n) begin
-			o_pc <= 0;
-			o_Idata <= 0;
+			o_WB <= 0;
+			o_M <= 0;
+			o_ALURes <= 0;
+			o_ALUOp2 <= 0;
+			o_wd <= 0;
 		end
-		// TODO: Check IF_flush & hazard
 		else begin
-			o_pc <= i_pc;
-			o_Idata <= i_Idata;
+			o_WB <= i_WB;
+			o_M <= i_M;
+			o_ALURes <= i_ALURes;
+			o_ALUOp2 <= i_ALUOp2;
+			o_wd <= i_wd;
 		end
 	end
 endmodule
 
 module MEM_WB (clk, reset_n, o_WB, o_Mdata, o_addr, o_wd, i_WB, i_Mdata, i_addr, i_wd);
+	input clk, reset_n;
+
+	output reg [`WB_SIG_COUNT-1:0] o_WB;
+	output reg [`WORD_SIZE-1:0] o_Mdata, o_addr, o_wd;
+
+	input [`WB_SIG_COUNT-1:0] i_WB;
+	input [`WORD_SIZE-1:0] i_Mdata, i_addr, i_wd;
+
+	initial begin
+		o_WB = 0;
+		o_Mdata = 0;
+		o_addr = 0;
+		o_wd = 0;
+	end
+	
+	always @(posedge clk) begin
+		if (!reset_n) begin
+			o_WB <= 0;
+			o_Mdata <= 0;
+			o_addr <= 0;
+			o_wd <= 0;
+		end
+		else begin
+			o_WB <= i_WB;
+			o_Mdata <= i_Mdata;
+			o_addr <= i_addr;
+			o_wd <= i_wd;
+		end
+	end
 endmodule
