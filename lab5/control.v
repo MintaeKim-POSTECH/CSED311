@@ -15,8 +15,9 @@ module control(control_signals, opcode, funcode, isTaken);
 		control_signals = 0;
 
 		//// WB Stage ////
-		// isInst: Always 1
+		// isInst: Always 1 (Except Nop)
 		control_signals[`WB_BASE + `WB_ISINST] = 1;
+		if (opcode == 14) control_signals[`WB_BASE + `WB_ISINST] = 0; // Nop
 	
 		// isHalt: HLT
 		if (opcode == 15 && funcode == 29) control_signals[`WB_BASE + `WB_ISHALT] = 1;
@@ -24,8 +25,8 @@ module control(control_signals, opcode, funcode, isTaken);
 		// isWWD: WWD
 		if (opcode == 15 && funcode == 28) control_signals[`WB_BASE + `WB_ISWWD] = 1;
 
-		// RegWrite: True for opcode 4~7, 10~14 and False when inst is HLT, WWD, JPR
-		if ((opcode >= 4 && opcode <= 7) || (opcode >= 10 && opcode <= 15)) begin
+		// RegWrite: True for opcode 4~7, 10, 15 but False when inst is HLT, WWD, JPR
+		if ((opcode >= 4 && opcode <= 7) || (opcode == 10 || opcode == 15)) begin
 			if(opcode==15 && (funcode == 25 || funcode == 28 || funcode == 29)) control_signals[`WB_BASE + `WB_REGWRITE] = 0;
 			else control_signals[`WB_BASE + `WB_REGWRITE] = 1;
 		end
@@ -36,7 +37,7 @@ module control(control_signals, opcode, funcode, isTaken);
 		// Reg2Save: isJAL || isJRL, 
 		// JAL: opcode 10
 		// JRL: opcode 15 and function code 26
-		if (opcode==10 || (opcode == 15 && funcode == 26)) control_signals[`WB_BASE + `WB_REG2SAVE] = 1;
+		if (opcode == 10 || (opcode == 15 && funcode == 26)) control_signals[`WB_BASE + `WB_REG2SAVE] = 1;
 
 		
 		//// M (MEM) Stage ////
