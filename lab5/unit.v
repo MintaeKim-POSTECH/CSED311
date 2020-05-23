@@ -4,9 +4,10 @@ module haz_detect_unit (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M
 	output reg hazard;
 
 	input [`REG_BITS-1:0] rs_ID, rt_ID;
-	input [`REG_BITS-1:0] writeReg_EX, writeReg_M, writeReg_WB;
+	input [`REG_BITS-1:0] writeReg_EX, writeReg_M;
 
-	input [`WB_SIG_COUNT] WB_sig_EX, WB_sig_M, WB_sig_WB;
+	input [`WB_SIG_COUNT-1:0] WB_sig_EX, WB_sig_M;
+	input [`OPCODE_BITS-1:0] opcode;
 
 	initial begin
 		hazard = 0;
@@ -52,24 +53,30 @@ module pred_flush_unit (IF_flush, hazard, opcode, funcode, isTaken);
 endmodule
 
 module imm_generator_unit (imm_val, imm_val_raw);
-	input [`IMM_BITS-1:0] before;
-	output wire [`WORD_SIZE-1:0] extended;
+	output wire [`WORD_SIZE-1:0] imm_val;
+	input [`IMM_BITS-1:0] imm_val_raw;	
 
 	// Sign Extend
-	assign extended[`IMM_BITS-1:0]=before[`IMM_BITS-1:0];
-	assign extended[`WORD_SIZE-1:8]= before[`IMM_BITS-1]? 8'b11111111 : 0;
+	assign imm_val[`IMM_BITS-1:0] = imm_val_raw[`IMM_BITS-1:0];
+	assign imm_val[`WORD_SIZE-1:8]= imm_val[`IMM_BITS-1]? 8'hff : 0;
 
 endmodule
 
 module bcond_calc_unit (isTaken, opcode, funcode, A, B);
-	output isTaken;
+	output reg isTaken;
 
 	input [`OPCODE_BITS-1:0] opcode;
 	input [`FUNCODE_BITS-1:0] funcode;
 
 	input [`WORD_SIZE-1:0] A, B;
 
+	initial begin
+		isTaken = 0;
+	end
+
 	always @(*) begin
+		isTaken = 0;
+
 		// Branch Condition Execution
 		case (opcode)
 			0: isTaken = ((A == B) ? 0 : 1);

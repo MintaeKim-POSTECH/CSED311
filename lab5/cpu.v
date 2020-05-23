@@ -48,12 +48,12 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
-	wire [`PROPAD:/CSED311/lab5/cpu.v_SID:/CSED311/lab5/cpu.vG_COUNT-1:0] control_signals_propagation, next_signals;
+	wire [`PROPA_SIG_COUNT-1:0] control_signals_propagation, next_signals;
 
 	// Control Wire: Propagation
-	wire [`WB_SIG_COUNT] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
-	wire [`M_SIG_COUNT] M_sig_ID, M_sig_EX, M_sig_M;
-	wire [`EX_SIG_COUNT] EX_sig_ID, EX_sig_EX;
+	wire [`WB_SIG_COUNT-1:0] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
+	wire [`M_SIG_COUNT-1:0] M_sig_ID, M_sig_EX, M_sig_M;
+	wire [`EX_SIG_COUNT-1:0] EX_sig_ID, EX_sig_EX;
 
 	// Control Wire: WB Stage
 	wire isInst;
@@ -73,15 +73,15 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// ALUOp: opcode_EX + funcode_EX
 	wire MemRead;
 	assign MemRead = M_sig_M[`M_MEMREAD];
-	wire MemWrite;D:/CSED311/lab5/cpu.v
+	wire MemWrite;
 	assign MemWrite = M_sig_M[`M_MEMWRITE];
 
 	// Control Wire: EX Stage
 	// ALUOp: opcode_EX + funcode_EX
 	wire [`OPCODE_BITS-1:0] opcode_EX;
-	assign opcode_EX = EX_sig_EX[`EX_OPCODE:`EX_OPCODE - `OPCODE_BITS + 1];
-	wire [`FUNCODE_BITS-1:0] funcode_EX:
-	assign funcode_EX = EX_sig_EX[`EX_FUNCODE:`EX_FUNCODE - `FUNCODE_BITS + 1];
+	assign opcode_EX = EX_sig_EX[`EX_OPCODE :`EX_OPCODE - `OPCODE_BITS + 1];
+	wire [`FUNCODE_BITS-1:0] funcode_EX;
+	assign funcode_EX = EX_sig_EX[`EX_FUNCODE :`EX_FUNCODE - `FUNCODE_BITS + 1];
 	wire ALUSrc;
 	assign ALUSrc = EX_sig_EX[`EX_ALUSRC];
 
@@ -105,7 +105,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	PC pc (clk, reset_n, hazard, PC_cur, PC_next);
 
 	// PC Wire: Propagation
-	wire [`WORD_SIZE=1:0] PC_ID, PC_EX, PC_M, PC_WB;
+	wire [`WORD_SIZE-1:0] PC_ID, PC_EX, PC_M, PC_WB;
 
 	// PC_inc Implementation
 	adder pc_increment (PC_inc, PC_cur, 16'h0001);
@@ -259,10 +259,10 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 			//$display ("regdata1 : %d, regdata2 : %d, A : %d, B : %d", reg_data1, reg_data2, A, B);
 			//$display ("op1 : %d, op2 : %d, bcond : %d, alu_res : %d, alu_out : %d", alu_op1, alu_op2, bcond, alu_res, ALUOut); 
 			//$display ("==");
-			readM2 <= MemRead;
-			writeM2 <= MemWrite;
+			readM2_r <= MemRead;
+			writeM2_r <= MemWrite;
 
-			if (isWWD) output_port <= writeData;
+			if (isWWD) output_port_reg <= writeData;
 			if (isInst) num_inst_reg <= (num_inst_reg + 1);
 		end
 	end

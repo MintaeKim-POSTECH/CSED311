@@ -16,7 +16,7 @@ module IF_ID (clk, reset_n, IF_flush, hazard, o_pc, o_Idata, i_pc, i_Idata);
 			o_pc <= 0;
 			o_Idata <= 0;
 		end
-		// TODO: Check IF_flush & hazard
+		// TODO: Check IF_flush
 		else if (hazard == 0) begin
 			o_pc <= i_pc;
 			o_Idata <= i_Idata;
