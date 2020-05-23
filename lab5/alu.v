@@ -1,14 +1,12 @@
 `include "macro.v"	   
 
-module alu(ALUAction, btype, A, B, result, bcond);
-	input [3:0] ALUAction;
-	input [2:0] btype;
+module alu(ALUAction, result, A, B);
+	input [`ALU_ACTION_BITS-1:0] ALUAction;
+
+	output reg signed [`WORD_SIZE-1:0] result;
 
 	input signed [`WORD_SIZE-1:0] A;
 	input signed [`WORD_SIZE-1:0] B;
-
-	output reg signed [`WORD_SIZE-1:0] result;
-	output reg bcond;
 
 	initial begin
 		result = 0;
@@ -29,14 +27,5 @@ module alu(ALUAction, btype, A, B, result, bcond);
 			8: result = (B << 8);
 			9: result = A;
 		endcase 
-		
-		// Branch Condition Execution
-		case (btype)
-			0: bcond = 0;
-			1: bcond = ((A == B) ? 0 : 1);
-			2: bcond = ((A == B) ? 1 : 0);
-			3: bcond = ((A > 0) ? 1 : 0);
-			4: bcond = ((A < 0) ? 1 : 0);
-		endcase
 	end
 endmodule

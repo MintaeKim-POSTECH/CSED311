@@ -8,6 +8,8 @@
 `include "unit.v"
 `include "control.v"
 `include "register.v"
+`include "alu_control.v"
+`include "alu.v"
 
 module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, data2, num_inst, output_port, is_halted);
 	input clk;
@@ -32,7 +34,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WORD_SIZE-1:0] data2;
 
 	output [`WORD_SIZE-1:0] num_inst;
-	wire [`WORD_SIZE-1:0] num_inst;
+	wire [`WORD_SIZE-1:0] num_inst;D:/CSED311/lab5/cpu.v
 	output [`WORD_SIZE-1:0] output_port;
 	wire [`WORD_SIZE-1:0] output_port;
 	output is_halted;
@@ -40,22 +42,38 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	
 	// TODO : Implement your pipelined CPU!
 	
-	// Control Wire
+	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
+	wire [`PROPA_SIG_COUNT-1:0] control_signals_propagation, next_signals;
+
+	// Control Wire: Propagation
+	wire [`WB_SIG_COUNT] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
+	wire [`M_SIG_COUNT] M_sig_ID, M_sig_EX, M_sig_M;
+	wire [`EX_SIG_COUNT] EX_sig_ID, EX_sig_EX;
+
+	// Control Wire: EX Stage
+	// ALUOp: opcode_EX + funcode_EX
+	wire [`OPCODE_BITS-1:0] opcode_EX;
+	assign opcode_EX = EX_sig_EX[`EX_OPCODE:`EX_OPCODE - `OPCODE_BITS + 1];
+	wire [`FUNCODE_BITS-1:0] funcode_EX:
+	assign funcode_EX = EX_sig_EX[`EX_FUNCODE:`EX_FUNCODE - `FUNCODE_BITS + 1];
+	wire ALUSrc;
+	assign ALUSrc = EX_sig_EX[`EX_ALUSRC];
 
 	// Control Wire: ID Stage
 	wire [1:0] PCSrc;
-	assign PCSrc = control_signals[___:___];
+	assign PCSrc = control_signals[`ID_PCSRC:`ID_PCSRC-1];
 	wire RegWrite;
-	assign RegWrite = control_signals[___];
+	assign RegWrite = control_signals[`ID_REGWRITE];
 	wire RegDest;
-	assign RegDest = control_signals[__];
+	assign RegDest = control_signals[`ID_REGDEST];
 
 	// Hazard Wire
 	wire hazard, IF_flush;
 	
-	// PCSrc MUX
 
+	//// IF Stage ////
+	// PCSrc MUX
 	wire [`WORD_SIZE-1:0] PC_next, PC_cur;
 	wire [`WORD_SIZE-1:0] PC_inc, PC_offset, PC_cat, PC_reg;
 	mux16_4to1 mux_PC (PCSrc, PC_next, PC_inc, PC_offset, PC_cat, PC_reg);
@@ -63,18 +81,22 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// PC
 	PC pc (clk, reset_n, hazard, PC_cur, PC_next);
 
+	// PC Wire: Propagation
+	wire [`WORD_SIZE=1:0] PC_ID, PC_EX, PC_M, PC_WB;
+
 	// PC_inc Implementation
 	adder pc_increment (PC_inc, PC_cur, 16'h0001);
 
-	// Instruction MemoryD:/CSED311/lab5/cpu.v
+	// Instruction Memory
 	assign address1 = PC_cur;
 	assign readM1 = 1; // Always Reading
 
 	// IF/ID
-	wire [`WORD_SIZE-1:0] PC_cur_latch, Idata_latch;
-	IF_ID if_id_latch (clk, reset_n, IF_flush, hazard, PC_cur, data1, PC_cur_latch, Idata_latch);
+	wire [`WORD_SIZE-1:0] Idata_latch;
+	IF_ID if_id_latch (clk, reset_n, IF_flush, hazard, PC_ID, Idata_latch, PC_cur, data1);
 	
-	// ID Stage
+	//// ID Stage ////
+	// Instruction Decoding
 	wire [`OPCODE_BITS-1:0] opcode;
 	assign opcode = Idata_latch[15:12];
 
@@ -87,10 +109,13 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`TARGET_BITS-1:0] target_raw;
 	assign target_raw = Idata_latch[11:0];
 
-	wire [`REG_BITS-1:0] rs, rt, rd;
-	assign rs = Idata_latch[11:10];
-	assign rt = Idata_latch[9:8];
-	assign rd = Idata_latch[7:6];
+	wire [`REG_BITS-1:0] rs_ID, rt_ID, rd_ID;
+	assign rs_ID = Idata_latch[11:10];
+	assign rt_ID = Idata_latch[9:8];
+	assign rd_ID = Idata_latch[7:6];
+
+	// writeReg: Propagation
+	wire [`REG_BITS-1:0] writeReg_ID, writeReg_EX, writeReg_M, writeReg_WB;
 
 	// PC_offset Implementation
 	wire [`WORD_SIZE-1:0] imm_val;
@@ -98,38 +123,65 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WORD_SIZE-1:0] imm_val_p1;
 	adder imm_p1 (imm_val_p1, imm_val, 16'h0001);
 
-	adder pc_offset_adder (PC_offset, imm_val_p1, PC_cur_latch);
+	adder pc_offset_adder (PC_offset, imm_val_p1, PC_ID);
 
 	// Control
 	control con (control_signals, opcode, funcode);
 
 	// Control Propagation MUX
-	wire [`PROPA_SIG_COUNT-1:0] control_signals_propagation;
 	assign control_signals_propagation = control_signals[`CONT_SIG_COUNT-1:`ID_SIG_COUNT]; 
-
-	wire [`PROPA_SIG_COUNT-1:0] next_signals;
 	mux_control_2to1 mux_con (hazard, next_signals, control_signals_propagation, 0);
+
+	// Control Propagation: Next Signals
+	assign WB_sig_ID = next_signals[`PROPA_SIG_COUNT-1:`PROPA_SIG_COUNT-`M_SIG_COUNT];
+	assign M_sig_ID = next_signals[`PROPA_SIG_COUNT-`M_SIG_COUNT-1:`EX_SIG_COUNT];
+	assign EX_sig_ID = next_signals[`EX_SIG_COUNT-1:0];
 	
 	// Register
-	// module register_cpu (clk, reset_n, readData1, readData2, readReg1, readReg2, writeReg, writeBack, RegWrite);
 	wire [`WORD_SIZE-1:0] readData1, readData2;
-	
-	wire [`REG_BITS-1:0] readReg1, readReg2, writeReg;
-	wire [`WORD_SIZE-1:0] writeBack;
+	wire [`REG_BITS-1:0] readReg1, readReg2;
+	wire [`WORD_SIZE-1:0] writeData;
 
-	register_cpu register (clk, reset_n, RegWrite, readData1, readData2, readReg1, readReg2, writeReg, writeBack);
+	register_cpu register (clk, reset_n, RegWrite, readData1, readData2, rs_ID, rt_ID, writeReg_WB, writeData);
 
 	// Register: MUX
-	wire [`REG_BITS-1:0] writeReg_propa;
-	mux2_2to1 rt_rd (RegDest, writeReg_propa, rt, rd);
+	mux2_2to1 rt_rd (RegDest, writeReg_ID, rt_ID, rd_ID);
 
 	// Branch Prediction Calculation
-	
+	wire isTaken;
+	bcond_calc_unit bcond_unit (isTaken, opcode, funcode, readData1, readData2);
 
-	// 
+	// Flushing Unit: Prediction Failed
+	// TODO: Implement
+	pred_flush_unit ();
 
 	// Hazard Detection Unit
-	haz_detect_unit hdu (hazard, ); 
+	// TODO: Implement
+	haz_detect_unit hdu (hazard, rs, rt, ___); 
+
+	// ID/EX
+	wire [`WORD_SIZE-1:0] readData1_latch, readData2_latch, imm_val_latch;
+	wire [`REG_BITS-1:0] wbRegID_latch;
+	ID_EX id_ex_latch (clk, reset_n, WB_sig_EX, M_sig_EX, EX_sig_EX, readData1_latch, readData2_latch, imm_val_latch, writeReg_EX, PC_EX, 
+					WB_sig_ID, M_sig_ID, EX_sig_ID, readData1, readData2, imm_val, writeReg_ID, PC_ID);
+	
+	//// EX Stage ////
+	// ALUSrc MUX
+	wire [`WORD_SIZE-1:0] ALUOp2;
+	mux16_2to1 mux_alusrc (ALUSrc, ALUOp2, readData2_latch, imm_val_latch);
+
+	// ALU Control
+	wire [`ALU_ACTION_BITS-1:0] ALUAction;
+	alu_control alu_con (ALUAction, opcode_EX, funcode_EX);
+
+	// ALU
+	wire [`WORD_SIZE-1:0] ALURes;
+	alu alu_cpu (ALUAction, ALURes, readData1_latch, ALUOp2);
+	
+	EX_MEM ex_mem_latch (clk, reset_n, WB_sig_M, M_sig_M, ALURes_latch, writeData_latch, writeReg_M, PC_M,
+					WB_sig_EX, M_sig_EX, ALURes, readData2_latch, writeReg_EX, PC_EX);
+
+	//// M (MEM) Stage ////
 	
 	
 	initial begin // Initial Logic

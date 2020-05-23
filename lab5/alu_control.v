@@ -1,18 +1,13 @@
  `include "macro.v"
 
-module alu_control (ALUAction, btype, opcode, funcode);
-	output reg [3:0] ALUAction;
-	output reg [2:0] btype;
+module alu_control (ALUAction, opcode, funcode);
+	output reg [`ALU_ACTION_BITS-1:0] ALUAction;
 
-	input [3:0] opcode;
-	input [5:0] funcode;
-
-	assign opcode = inst[15:12];
-	assign funcode = inst[5:0];
+	input [`OPCODE_BITS:0] opcode;
+	input [`FUNCODE_BITS:0] funcode;
 
 	initial begin
 		ALUAction = 0;
-		btype = 0;
 	end
 
 	always @(*) begin
@@ -40,13 +35,4 @@ module alu_control (ALUAction, btype, opcode, funcode);
 				endcase
 		endcase
 	end
-
-	// btype
-	case (opcode)
-		0: btype = 1;       // bcond = ((A == B) ? 0 : 1);
-		1: btype = 2;       // bcond = ((A == B) ? 1 : 0);
-		2: btype = 3;       // bcond = ((A > 0) ? 1 : 0);
-		3: btype = 4;       // bcond = ((A < 0) ? 1 : 0);
-		default: btype = 0; // bcond = 0;
-	endcase
 endmodule

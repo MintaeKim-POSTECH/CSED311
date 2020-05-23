@@ -23,7 +23,8 @@ module register_cpu (clk, reset_n, RegWrite, readData1, readData2, readReg1, rea
 		readData2 = register[readReg2];
 	end
 
-	always @(posedge clk) begin // Register: Sequential Logic
+	// Register Write is Proceded in Neg-Edge CLK
+	always @(negedge clk) begin // Register: Sequential Logic		
 		// $display ("reg : %d %d %d %d", register[0], register[1], register[2], register[3]);
 		if (!reset_n) begin
 			for (i = 0; i < `NUM_REGS; i = i+1) register[i] <= 16'h0000;
