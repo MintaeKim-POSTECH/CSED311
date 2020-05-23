@@ -48,7 +48,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
-	wire [`PROPA_SID:/CSED311/lab5/cpu.vG_COUNT-1:0] control_signals_propagation, next_signals;
+	wire [`PROPAD:/CSED311/lab5/cpu.v_SID:/CSED311/lab5/cpu.vG_COUNT-1:0] control_signals_propagation, next_signals;
 
 	// Control Wire: Propagation
 	wire [`WB_SIG_COUNT] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
@@ -73,7 +73,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// ALUOp: opcode_EX + funcode_EX
 	wire MemRead;
 	assign MemRead = M_sig_M[`M_MEMREAD];
-	wire MemWrite;
+	wire MemWrite;D:/CSED311/lab5/cpu.v
 	assign MemWrite = M_sig_M[`M_MEMWRITE];
 
 	// Control Wire: EX Stage
@@ -154,6 +154,8 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Propagation MUX
 	assign control_signals_propagation = control_signals[`CONT_SIG_COUNT-1:`ID_SIG_COUNT]; 
+
+	// TODO: hazard | flush ?
 	mux_control_2to1 mux_con (hazard, next_signals, control_signals_propagation, 0);
 
 	// Control Propagation: Next Signals
@@ -226,11 +228,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	assign num_inst = num_inst_reg;
 
 	// Hazard Detection Unit
-	haz_detect_unit hdu (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB); 
+	haz_detect_unit hdu (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, opcode); 
 
 	// Flushing Unit: Prediction Failed
 	// TODO: Implement
-	pred_flush_unit ();
+	pred_flush_unit pred_flush (IF_flush, hazard, opcode, funcode, isTaken);
 
 	initial begin // Initial Logic
 		readM2_r = 0;

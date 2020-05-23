@@ -15,8 +15,8 @@ module PC (clk, reset_n, hazard, PC_cur, PC_next);
 			// $display ("CPU-RESET cur: %d", PC_cur);
 			PC_cur <= -1;
 		end
-		// TODO: Consider Hazard
-		else begin
+		// Consider Hazard
+		else if (hazard == 0) begin
 			PC_cur <= PC_next;
 		end
 	end
