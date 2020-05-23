@@ -1,10 +1,11 @@
 `include "macro.v"
 
-module control(control_signals, opcode, funcode);
+module control(control_signals, opcode, funcode, isTaken);
 	output reg [`CONT_SIG_COUNT-1:0] control_signals;
 
 	input [`OPCODE_BITS-1:0] opcode;
 	input [`FUNCODE_BITS-1:0] funcode;
+	input isTaken;
 
 	initial begin
 		control_signals = 0;
@@ -59,25 +60,16 @@ module control(control_signals, opcode, funcode);
 
 		//// ID Stage ////
 		// PCSrc: TODO: Implement
-		control_signals[`ID_BASE + `ID_PCSRC : `ID_BASE + `ID_REGDEST + 1];
+		// 00: PC_inc
+		// 01: PC_offset (Bxx)
+		// 10: PC_cat (JMP, JAL)
+		// 11: PC_reg (JPR, JRL)
+		if (opcode <= 3 && isTaken) control_signals[`ID_BASE + `ID_PCSRC : `ID_BASE + `ID_REGDEST + 1] = 2'b01;
+		else if (opcode >= 9 && opcode <= 10) control_signals[`ID_BASE + `ID_PCSRC : `ID_BASE + `ID_REGDEST + 1] = 2'b10;
+		else if (opcode == 15 && (funcode == 25 || funcode == 26)) control_signals[`ID_BASE + `ID_PCSRC : `ID_BASE + `ID_REGDEST + 1] = 2'b11;
+		else control_signals[`ID_BASE + `ID_PCSRC : `ID_BASE + `ID_REGDEST + 1] = 2'b00;
 
 		// RegDest: R Type (rd) vs I Type (rt)
-		if (opcode==15) control_signals [`ID_BASE + `ID_REGDEST] = 1;
-
-// ---	
-
-/*
-		// PCSrc1
-		if (opcode==9||opcode==10)begin
-			PCSrc1 = 1;
-		end
-
-		// PCSrc2: isJRL || isJPR
-		// JRL: opcode 15 and function code 26
-		// JPR: opcode 15 and function code 25
-		if (opcode==15)begin
-			if(funcode==25||funcode==26) PCSrc2 = 1;
-		end
-*/
+		if (opcode == 15) control_signals [`ID_BASE + `ID_REGDEST] = 1;
 	end
 endmodule

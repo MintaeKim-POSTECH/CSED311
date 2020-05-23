@@ -48,7 +48,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
-	wire [`PROPA_SIG_COUNT-1:0] control_signals_propagation, next_signals;
+	wire [`PROPA_SID:/CSED311/lab5/cpu.vG_COUNT-1:0] control_signals_propagation, next_signals;
 
 	// Control Wire: Propagation
 	wire [`WB_SIG_COUNT] WB_sig_ID, WB_sig_EX, WB_sig_M, WB_sig_WB;
@@ -149,7 +149,8 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	adder pc_offset_adder (PC_offset, imm_val_p1, PC_ID);
 
 	// Control
-	control con (control_signals, opcode, funcode);
+	wire isTaken;
+	control con (control_signals, opcode, funcode, isTaken);
 
 	// Control Propagation MUX
 	assign control_signals_propagation = control_signals[`CONT_SIG_COUNT-1:`ID_SIG_COUNT]; 
@@ -170,8 +171,12 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	mux2_2to1 rt_rd (RegDest, writeReg_ID, rt_ID, rd_ID);
 
 	// Branch Prediction Calculation
-	wire isTaken;
 	bcond_calc_unit bcond_unit (isTaken, opcode, funcode, readData1, readData2);
+
+	// PC_cat Implementation
+	assign PC_cat = {PC_ID[15:12], target_raw};
+	// PC_reg Implementation
+	assign PC_reg = readData1;
 
 	// ID/EX
 	wire [`WORD_SIZE-1:0] readData1_latch, readData2_latch, imm_val_latch;
@@ -221,8 +226,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	assign num_inst = num_inst_reg;
 
 	// Hazard Detection Unit
-	// TODO: Implement
-	haz_detect_unit hdu (hazard, rs, rt, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB); 
+	haz_detect_unit hdu (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB); 
 
 	// Flushing Unit: Prediction Failed
 	// TODO: Implement

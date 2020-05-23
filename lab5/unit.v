@@ -1,10 +1,13 @@
 `include "macro.v"
 
-module haz_detect_unit (hazard, ID_inst, EX_MemWrite, _____sth additional input____ );
+// haz_detect_unit hdu (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB); 
+module haz_detect_unit (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, writeReg_WB, WB_sig_WB);
 	output hazard;
 
-	input [size:0] ID_inst;
-	input [size:0] EX_MemWrite;
+	input [`REG_BITS-1:0] rs_ID, rt_ID;
+	input [`REG_BITS-1:0] writeReg_EX, writeReg_M, writeReg_WB;
+
+	input [`WB_SIG_COUNT] WB_sig_EX, WB_sig_M, WB_sig_WB;
 
 	always @(*) begin
 		// TODO: Set Hazard in specific condition
