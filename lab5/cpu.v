@@ -40,11 +40,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire is_halted;
 	
 	// TODO : Implement your pipelined CPU!
-	
-	// readM, writeM Registers
-	reg readM2_r, writeM2_r;
-	assign readM2 = readM2_r;
-	assign writeM2 = writeM2_r;
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
@@ -143,10 +138,12 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// PC_offset Implementation
 	wire [`WORD_SIZE-1:0] imm_val;
 	imm_generator_unit imm_gen (imm_val, imm_raw);
-	wire [`WORD_SIZE-1:0] imm_val_p1;
-	adder imm_p1 (imm_val_p1, imm_val, 16'h0001);
 
-	adder pc_offset_adder (PC_offset, imm_val_p1, PC_ID);
+	// Implementing PC_offset
+	wire [`WORD_SIZE-1:0] PC_p1;
+	adder pc_ex_calc (PC_p1, PC_ID, 16'h0001);
+
+	adder pc_offset_adder (PC_offset, imm_val, PC_p1);
 
 	// Control
 	wire isTaken;
@@ -154,8 +151,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Propagation MUX
 	assign control_signals_propagation = control_signals[`CONT_SIG_COUNT-1:`ID_SIG_COUNT]; 
-
-	// TODO: hazard | flush ?
 	mux_control_2to1 mux_con (hazard, next_signals, control_signals_propagation, 19'h00000);
 
 	// Control Propagation: Next Signals
@@ -184,7 +179,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire [`WORD_SIZE-1:0] readData1_latch, readData2_latch, imm_val_latch;
 	wire [`REG_BITS-1:0] wbRegID_latch;
 	ID_EX id_ex_latch (clk, reset_n, WB_sig_EX, M_sig_EX, EX_sig_EX, readData1_latch, readData2_latch, imm_val_latch, writeReg_EX, PC_EX, 
-					WB_sig_ID, M_sig_ID, EX_sig_ID, readData1, readData2, imm_val, writeReg_ID, PC_ID);
+					WB_sig_ID, M_sig_ID, EX_sig_ID, readData1, readData2, imm_val, writeReg_ID, PC_p1);
 	
 	//// EX Stage ////
 	// ALUSrc MUX
@@ -235,9 +230,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// TODO: Implement
 	pred_flush_unit pred_flush (IF_flush, hazard, opcode, funcode, isTaken);
 
+	// readM2, writeM2 Assignment
+	assign readM2 = MemRead;
+	assign writeM2 = MemWrite;
+
 	initial begin // Initial Logic
-		readM2_r = 0;
-		writeM2_r = 0;
 
 		num_inst_reg = 0;
 		output_port_reg = 16'bx;
@@ -245,41 +242,45 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	always @(posedge clk) begin
 		if (!reset_n) begin
-			readM2_r <= 0;
-			writeM2_r <= 0;
-
 			num_inst_reg <= 0;
 			output_port_reg <= 16'bx;
 		end
 		else begin
-			readM2_r <= MemRead;
-			writeM2_r <= MemWrite;
-
 			if (isWWD) output_port_reg <= writeData;
 			if (isInst) num_inst_reg <= (num_inst_reg + 1);
 		end
 	end
+
 	/*
 	always @(negedge clk) begin
 		$display ("");
 		$display ("---IF---");
 		$display ("PC_next : %h, PC_cur : %h, IF_address : %h, IF_Idata : %h", PC_next, PC_cur, data1, address1);
-		$display ("PCSrc : %d, IF.Flush : %d, hazard : %d", PCSrc, IF_flush, hazard);
+		$display ("IF.Flush : %d, hazard : %d", IF_flush, hazard);
 		$display ("---ID---");
 		$display ("PC_ID : %h, ID_Idata : %h", PC_ID, Idata_latch);
 		$display ("rs_ID : %d, rt_ID : %d, rd_ID : %d, writeReg_ID : %d", rs_ID, rt_ID, rd_ID, writeReg_ID);
-		$display ("imm_raw : %d, imm_val : %d, target : %d", imm_raw, imm_val, target_raw);
+		$display ("imm_raw : %h, imm_val : %h, target : %h", imm_raw, imm_val, target_raw);
+		$display ("PCSrc : %b, RegDest : %b", PCSrc, RegDest);
 		$display ("readData1 : %h, readData2 : %h", readData1, readData2);
-		$display ("PC_offset : %d, PC_cat : %d, PC_reg : %d", PC_offset, PC_cat, PC_reg);
+		$display ("PC_offset : %h, PC_cat : %h, PC_reg : %h", PC_offset, PC_cat, PC_reg);
 		$display ("isTaken : %d, hazard : %d", isTaken, hazard);
-		$display ("Control Signals : [WB] %b, [M] %b, [EX] %b, [ID] %b", control_signals[21:16], control_signals[15:14], control_signals[13:3], control_signals[2:0]);
 		$display ("---EX---");
-		$display ("Control Signals : [WB] %b, [M] %b, [EX] %b", WB_sig_EX, M_sig_EX, EX_sig_EX);
+		$display ("PC_EX : %h, writeReg_EX : %d", PC_EX, writeReg_EX);
+		$display ("readData1 : %h, readData2 : %h, imm_val : %h", readData1_latch, readData2_latch, imm_val_latch);
+		$display ("ALUSrc : %d, ALUOp2 : %h, ALURes : %h", ALUSrc, ALUOp2, ALURes);
+		$display ("writeReg_candidate : %d", writeReg_EX);
 		$display ("---M/MEM---");
-		$display ("Control Signals : [WB] %b, [M] %b", WB_sig_M, M_sig_M);
+		$display ("PC_M : %h, writeReg_M : %d", PC_M, writeReg_M);
+		$display ("readM2 : %b, writeM2 : %b, writeData_latch : %h", readM2, writeM2, writeData_latch);
+		$display ("M_address : %h, M_Mdata : %h", address2, data2);
+		$display ("MemWrite : %b, MemRead : %b", MemWrite, MemRead);
+		$display ("writeReg_candidate : %d", writeReg_M);
 		$display ("---WB---");
-		$display ("num_inst : %d, isInst : %d", num_inst, isInst);
-		$display ("Control Signals : [WB] %b", WB_sig_WB);
+		$display ("PC_WB : %h, writeReg_WB_candidate : %d, writeReg_WB : %d", PC_WB, writeReg_WB_candidate, writeReg_WB);
+		$display ("num_inst : %h, isInst : %b", num_inst, isInst);
+		$display ("addr_latch : %h, Mdata_latch : %h, writeData_candidate : %h, writeData : %h", addr_latch, Mdata_latch, writeData_candidate, writeData);
+		$display ("Reg2Save : %b, RegWrite : %b, isInst : %b, isWWD : %b", Reg2Save, RegWrite, isInst, isWWD);
 		$display ("==");
 	end
 	*/

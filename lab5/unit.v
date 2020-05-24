@@ -16,18 +16,21 @@ module haz_detect_unit (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M
 	always @(*) begin
 		hazard = 0;
 
-		// Set Hazard in specific condition
-		if (rs_ID == writeReg_EX && WB_sig_EX[`WB_REGWRITE] == 1) hazard = 1;
-		else if (rs_ID == writeReg_M && WB_sig_M[`WB_REGWRITE] == 1) hazard = 1;
-		else if (rs_ID == 2'b10 && WB_sig_EX[`WB_REGWRITE] == 1 && WB_sig_EX[`WB_REG2SAVE] == 1) hazard = 1;
-		else if (rs_ID == 2'b10 && WB_sig_M[`WB_REGWRITE] == 1 && WB_sig_M[`WB_REG2SAVE] == 1) hazard = 1;
+		if (opcode == 14) hazard = 0; // Nop: No Hazard
+		else begin
+			// Set Hazard in specific condition
+			if (rs_ID == writeReg_EX && WB_sig_EX[`WB_REGWRITE] == 1) hazard = 1;
+			else if (rs_ID == writeReg_M && WB_sig_M[`WB_REGWRITE] == 1) hazard = 1;
+			else if (rs_ID == 2'b10 && WB_sig_EX[`WB_REGWRITE] == 1 && WB_sig_EX[`WB_REG2SAVE] == 1) hazard = 1;
+			else if (rs_ID == 2'b10 && WB_sig_M[`WB_REGWRITE] == 1 && WB_sig_M[`WB_REG2SAVE] == 1) hazard = 1;
 
-		// !isJ-Format (JMP, JAL)
-		if (opcode < 9 || opcode > 10) begin
-			if (rt_ID == writeReg_EX && WB_sig_EX[`WB_REGWRITE] == 1) hazard = 1;
-			else if (rt_ID == writeReg_M && WB_sig_M[`WB_REGWRITE] == 1) hazard = 1;
-			else if (rt_ID == 2'b10 && WB_sig_EX[`WB_REGWRITE] == 1 && WB_sig_EX[`WB_REG2SAVE] == 1) hazard = 1;
-			else if (rt_ID == 2'b10 && WB_sig_M[`WB_REGWRITE] == 1 && WB_sig_M[`WB_REG2SAVE] == 1) hazard = 1;
+			// !isJ-Format (JMP, JAL)
+			if (opcode < 9 || opcode > 10) begin
+				if (rt_ID == writeReg_EX && WB_sig_EX[`WB_REGWRITE] == 1) hazard = 1;
+				else if (rt_ID == writeReg_M && WB_sig_M[`WB_REGWRITE] == 1) hazard = 1;
+				else if (rt_ID == 2'b10 && WB_sig_EX[`WB_REGWRITE] == 1 && WB_sig_EX[`WB_REG2SAVE] == 1) hazard = 1;
+				else if (rt_ID == 2'b10 && WB_sig_M[`WB_REGWRITE] == 1 && WB_sig_M[`WB_REG2SAVE] == 1) hazard = 1;
+			end
 		end
 	end
 endmodule
@@ -70,7 +73,7 @@ module bcond_calc_unit (isTaken, opcode, funcode, A, B);
 	input [`OPCODE_BITS-1:0] opcode;
 	input [`FUNCODE_BITS-1:0] funcode;
 
-	input [`WORD_SIZE-1:0] A, B;
+	input signed [`WORD_SIZE-1:0] A, B;
 
 	initial begin
 		isTaken = 0;
