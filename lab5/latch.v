@@ -8,13 +8,13 @@ module IF_ID (clk, reset_n, IF_flush, hazard, o_pc, o_Idata, i_pc, i_Idata);
 
 	initial begin
 		o_pc = 0;
-		o_Idata = 0;
+		o_Idata = 16'he000;
 	end
 	
 	always @(posedge clk) begin
 		if (!reset_n) begin
 			o_pc <= 0;
-			o_Idata <= 0;
+			o_Idata <= 16'he000;
 		end
 		// Check IF_flush: Setting Nop (opcode == 14)
 		else if (IF_flush == 1) begin

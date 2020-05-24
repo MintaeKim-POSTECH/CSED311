@@ -35,7 +35,9 @@ endmodule
 module pred_flush_unit (IF_flush, hazard, opcode, funcode, isTaken);
 	output reg IF_flush;
 
-	input hazard, opcode, funcode, isTaken;
+	input hazard, isTaken;
+	input [`OPCODE_BITS-1:0] opcode;
+	input [`FUNCODE_BITS-1:0] funcode;
 
 	initial begin
 		IF_flush = 0;

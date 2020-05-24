@@ -30,7 +30,7 @@ module cpu_TB();
 
 	// initialize inputs
 	initial begin
-		f = $fopen("output.txt", "w");
+		f = $fopen("D:\CSED311\lab5\output.txt", "w");
 
 		clk = 0;           // set initial clock value	
 		

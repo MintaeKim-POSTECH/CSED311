@@ -3,8 +3,8 @@
 module alu_control (ALUAction, opcode, funcode);
 	output reg [`ALU_ACTION_BITS-1:0] ALUAction;
 
-	input [`OPCODE_BITS:0] opcode;
-	input [`FUNCODE_BITS:0] funcode;
+	input [`OPCODE_BITS-1:0] opcode;
+	input [`FUNCODE_BITS-1:0] funcode;
 
 	initial begin
 		ALUAction = 0;
