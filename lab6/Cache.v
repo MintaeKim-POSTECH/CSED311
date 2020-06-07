@@ -24,7 +24,7 @@ module non_cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, add
 	input [`WORD_SIZE-1:0] address1;
 	wire [`WORD_SIZE-1:0] address1;
 	output data1;
-	reg [`WORD_SIZE-1:0] data1;
+	wire [`WORD_SIZE-1:0] data1;
 
 	input [`WORD_SIZE-1:0] address2;
 	wire [`WORD_SIZE-1:0] address2;
@@ -94,7 +94,7 @@ module non_cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, add
 			end
 			else begin
 				if (cReadM2 == 1 || cWriteM2 == 1)
-					state2 <= staste2 + 1;
+					state2 <= state2 + 1;
 			end
 		end
 	end
@@ -134,15 +134,15 @@ module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address,
 	// Fetch Cache Data
 	assign w_valid = valid_arr[c_index];
 	assign w_tag = tag_arr[c_index];
-	assign w_data = data_arr[c_index][c_offset*(`WORD_SIZE + 1)-1 : c_offset*`WORD_SIZE];
+	assign w_data = data_arr[c_index][c_offset*`WORD_SIZE +: `WORD_SIZE];
 	assign w_dirty = dirty_arr[c_index][c_offset];
 
 	initial begin
 		valid_arr = 0;
 		for (i = 0; i < `INDEX_PER_CACHE; i = i + 1) begin
-			tag_arr = 0;
-			data_arr = 0;
-			dirty_arr = 0;
+			tag_arr[i] = 0;
+			data_arr[i] = 0;
+			dirty_arr[i] = 0;
 		end
 	end
 
@@ -151,17 +151,17 @@ module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address,
 		if (!reset_n) begin
 			valid_arr <= 0;
 			for (i = 0; i < `INDEX_PER_CACHE; i = i + 1) begin
-				tag_arr <= 0;
-				data_arr <= 0;
-				dirty_arr <= 0;
+				tag_arr[i] <= 0;
+				data_arr[i] <= 0;
+				dirty_arr[i] <= 0;
 			end
 		end
 		else begin
 			if (wWriteM) begin
 				valid_arr[c_index] <= 1;
 				tag_arr[c_index] <= c_tag;
-				data_arr[c_index][c_offset*(`WORD_SIZE + 1)-1 : c_offset*`WORD_SIZE] <= data;
-				w_dirty = dirty_arr[c_index][c_offset] <= 1;
+				data_arr[c_index][c_offset*`WORD_SIZE +: `WORD_SIZE] <= data;
+				dirty_arr[c_index][c_offset] <= 1;
 			end
 		end
 	end
@@ -201,7 +201,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 	// Way
 	way_unit way1(clk, reset_n, w_valid1, w_tag1, w_data1, w_dirty1, wWriteM1, m_address, data);
-	way_unit way2(clk, reset_n, w_valid2, w_tag2, w_data2, w_dirty2, wWriteM2, m_address, data)
+	way_unit way2(clk, reset_n, w_valid2, w_tag2, w_data2, w_dirty2, wWriteM2, m_address, data);
 
 	// Register
 	reg [`INDEX_PER_CACHE-1:0] lru_cache;
