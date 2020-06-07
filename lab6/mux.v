@@ -80,3 +80,18 @@ module mux_control_2to1 (control, result, i1, i2);
 	end
 endmodule
 
+
+module mux_mem_sig_2to1 (control, result, i1, i2);
+	input control;
+	
+	output reg [`WB_SIG_COUNT-1:0] result;
+
+	input [`WB_SIG_COUNT-1:0] i1, i2;
+
+	always @(*) begin
+		case (control)
+			0: result = i1;
+			1: result = i2;
+		endcase
+	end
+endmodule

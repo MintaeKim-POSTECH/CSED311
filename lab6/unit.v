@@ -35,10 +35,10 @@ module haz_detect_unit (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M
 	end
 endmodule
 
-module pred_flush_unit (IF_flush, hazard, opcode, funcode, isTaken);
+module pred_flush_unit (IF_flush, opcode, funcode, isTaken);
 	output reg IF_flush;
 
-	input hazard, isTaken;
+	input isTaken;
 	input [`OPCODE_BITS-1:0] opcode;
 	input [`FUNCODE_BITS-1:0] funcode;
 
@@ -48,12 +48,9 @@ module pred_flush_unit (IF_flush, hazard, opcode, funcode, isTaken);
 
 	always @(*) begin
 		IF_flush = 0;
-		if (hazard == 1) IF_flush = 0;
-		else begin
-			if (opcode <= 3 && isTaken) IF_flush = 1;
-			else if (opcode >= 9 && opcode <= 10) IF_flush = 1;
-			else if (opcode == 15 && (funcode == 25 || funcode == 26)) IF_flush = 1;
-		end
+		if (opcode <= 3 && isTaken) IF_flush = 1;
+		else if (opcode >= 9 && opcode <= 10) IF_flush = 1;
+		else if (opcode == 15 && (funcode == 25 || funcode == 26)) IF_flush = 1;
 	end
 endmodule
 

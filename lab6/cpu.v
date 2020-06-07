@@ -9,6 +9,7 @@
 `include "register.v"
 `include "alu_control.v"
 `include "alu.v"
+`include "Cache.v"
 
 module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, data2, num_inst, output_port, is_halted);
 	input clk;
@@ -39,7 +40,14 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	output is_halted;
 	wire is_halted;
 	
-	// TODO : Implement your pipelined CPU!
+	// TODO : Implement your pipelined CPU! (Lab 5)
+
+	// Lab 6
+	// Cache Read/Write Wire
+	wire cReadM1, cReadM2, cWriteM2;
+	// Cache Address
+	wire [`WORD_SIZE-1:0] c_address1, c_address2;
+	
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
@@ -89,6 +97,9 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// Hazard Wire
 	wire hazard, IF_flush;
 	
+	// Data Ready Wire
+	wire iReady, dReady;
+	
 
 	//// IF Stage ////
 	// PCSrc MUX
@@ -106,12 +117,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	adder pc_increment (PC_inc, PC_cur, 16'h0001);
 
 	// Instruction Memory
-	assign address1 = PC_cur;
-	assign readM1 = 1; // Always Reading
+	assign c_address1 = PC_cur;
 
 	// IF/ID
 	wire [`WORD_SIZE-1:0] Idata_latch;
-	IF_ID if_id_latch (clk, reset_n, IF_flush, hazard, PC_ID, Idata_latch, PC_cur, data1);
+	IF_ID if_id_latch (clk, reset_n, IF_flush, hazard, iReady, dReady, PC_ID, Idata_latch, PC_cur, data1);
 	
 	//// ID Stage ////
 	// Instruction Decoding
@@ -178,7 +188,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// ID/EX
 	wire [`WORD_SIZE-1:0] readData1_latch, readData2_latch, imm_val_latch;
 	wire [`REG_BITS-1:0] wbRegID_latch;
-	ID_EX id_ex_latch (clk, reset_n, WB_sig_EX, M_sig_EX, EX_sig_EX, readData1_latch, readData2_latch, imm_val_latch, writeReg_EX, PC_EX, 
+	ID_EX id_ex_latch (clk, reset_n, dReady, WB_sig_EX, M_sig_EX, EX_sig_EX, readData1_latch, readData2_latch, imm_val_latch, writeReg_EX, PC_EX, 
 					WB_sig_ID, M_sig_ID, EX_sig_ID, readData1, readData2, imm_val, writeReg_ID, PC_p1);
 	
 	//// EX Stage ////
@@ -196,18 +206,22 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	
 	// EX/M
 	wire [`WORD_SIZE-1:0] ALURes_latch, writeData_latch;
-	EX_M ex_m_latch (clk, reset_n, WB_sig_M, M_sig_M, ALURes_latch, writeData_latch, writeReg_M, PC_M,
+	EX_M ex_m_latch (clk, reset_n, dReady, WB_sig_M, M_sig_M, ALURes_latch, writeData_latch, writeReg_M, PC_M,
 					WB_sig_EX, M_sig_EX, ALURes, readData2_latch, writeReg_EX, PC_EX);
 
 	//// M (MEM) Stage ////
-	assign address2 = ALURes_latch;
+	assign c_address2 = ALURes_latch;
 	assign data2 = ((readM2 == 1) ? 16'bz : writeData_latch);
 
 	// M/WB
 	wire [`WORD_SIZE-1:0] Mdata_latch, addr_latch;
 	wire [`REG_BITS-1:0] writeReg_WB_candidate;
+
+	// Lab6: Stall if !dReady
+	wire [`WB_SIG_COUNT-1:0] WB_sig_M_stall;
+	mux_mem_sig_2to1 mux_dready(dReady, WB_sig_M_stall, 6'h00, WB_sig_M);
 	M_WB m_wb_latch (clk, reset_n, WB_sig_WB, Mdata_latch, addr_latch, writeReg_WB_candidate, PC_WB, 
-					WB_sig_M, data2, ALURes_latch, writeReg_M, PC_M);
+					WB_sig_M_stall, data2, ALURes_latch, writeReg_M, PC_M);
 
 	//// WB Stage ////
 	wire [`WORD_SIZE-1:0] writeData_candidate;
@@ -227,15 +241,18 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	haz_detect_unit hdu (hazard, rs_ID, rt_ID, writeReg_EX, WB_sig_EX, writeReg_M, WB_sig_M, opcode); 
 
 	// Flushing Unit: Prediction Failed
-	// TODO: Implement
-	pred_flush_unit pred_flush (IF_flush, hazard, opcode, funcode, isTaken);
+	pred_flush_unit pred_flush (IF_flush, opcode, funcode, isTaken);
 
-	// readM2, writeM2 Assignment
-	assign readM2 = MemRead;
-	assign writeM2 = MemWrite;
+	// TODO: Implement your own Cache! (Lab6: Cache)
+	non_cache cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
+	//        cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);	
+
+	// cReadM2, cWriteM2 Assignment
+	assign cReadM1 = 1;
+	assign cReadM2 = MemRead;
+	assign cWriteM2 = MemWrite;
 
 	initial begin // Initial Logic
-
 		num_inst_reg = 0;
 		output_port_reg = 16'bx;
 	end

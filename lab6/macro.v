@@ -9,6 +9,21 @@
 `define WORD_SIZE         16
 `define NUM_REGS           4
 
+`define WORD_PER_CACHE    16 // 16 Words for each I-Cache & D-Cache
+`define WORD_PER_LINE      4 // 4 Words per Line
+`define INDEX_PER_CACHE    2
+
+`define DATA_BITS         64
+
+`define TAG_BITS          13
+`define INDEX_BITS         1
+`define OFFSET_BITS        2 // 4 Words Per Line, 2 Bits Needed
+
+`define LATENCY_BITS       3 // ~7 Cycles Latency
+`define NON_CACHE_LATENCY  2
+`define CACHE_HIT_LATENCY  1
+`define CACHE_MISS_LATENCY 6
+
 `define CONT_SIG_COUNT    22 // WB_SIG_COUNT + M_SIG_COUNT + EX_SIG_COUNT + ID_SIG_COUNT
 `define PROPA_SIG_COUNT   19 // WB_SIG_COUNT + M_SIG_COUNT + EX_SIG_COUNT
 

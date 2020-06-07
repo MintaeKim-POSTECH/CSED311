@@ -1,7 +1,8 @@
 `include "macro.v"
 
-module IF_ID (clk, reset_n, IF_flush, hazard, o_pc, o_Idata, i_pc, i_Idata);
-	input clk, reset_n, IF_flush, hazard;
+// TODO: Apply iReady, dReady
+module IF_ID (clk, reset_n, IF_flush, hazard, iReady, dReady, o_pc, o_Idata, i_pc, i_Idata);
+	input clk, reset_n, IF_flush, hazard, iReady, dReady;
 
 	output reg [`WORD_SIZE-1:0] o_pc, o_Idata;
 	input [`WORD_SIZE-1:0] i_pc, i_Idata;
@@ -16,22 +17,24 @@ module IF_ID (clk, reset_n, IF_flush, hazard, o_pc, o_Idata, i_pc, i_Idata);
 			o_pc <= 0;
 			o_Idata <= 16'he000;
 		end
-		// Check IF_flush: Setting Nop (opcode == 14)
-		else if (IF_flush == 1) begin
-			o_pc <= 16'h0000;
-			o_Idata <= 16'he000; 
-		end
-		// Check Hazard
-		else if (hazard == 0) begin
-			o_pc <= i_pc;
-			o_Idata <= i_Idata;
+		// Check Stall Condition (Hazard, iReady, dReady
+		else if (hazard == 0 && iReady == 1 && dReady == 1) begin
+			// Check IF_flush: Setting Nop (opcode == 14)
+			if (IF_flush == 1) begin
+				o_pc <= 16'h0000;
+				o_Idata <= 16'he000; 
+			end
+			else begin
+				o_pc <= i_pc;
+				o_Idata <= i_Idata;
+			end
 		end
 	end
 endmodule
 
 
-module ID_EX (clk, reset_n, o_WB, o_M, o_EX, o_readData1, o_readData2, o_immVal, o_writeReg, o_pc, i_WB, i_M, i_EX, i_readData1, i_readData2, i_immVal, i_writeReg, i_pc);
-	input clk, reset_n;
+module ID_EX (clk, reset_n, dReady, o_WB, o_M, o_EX, o_readData1, o_readData2, o_immVal, o_writeReg, o_pc, i_WB, i_M, i_EX, i_readData1, i_readData2, i_immVal, i_writeReg, i_pc);
+	input clk, reset_n, dReady;
 
 	output reg [`WB_SIG_COUNT-1:0] o_WB;
 	output reg [`M_SIG_COUNT-1:0] o_M;
@@ -70,7 +73,7 @@ module ID_EX (clk, reset_n, o_WB, o_M, o_EX, o_readData1, o_readData2, o_immVal,
 			o_immVal <= 0;
 			o_pc <= 0;
 		end
-		else begin
+		else if (dReady) begin
 			o_WB <= i_WB;
 			o_M <= i_M;
 			o_EX <= i_EX;
@@ -84,8 +87,8 @@ module ID_EX (clk, reset_n, o_WB, o_M, o_EX, o_readData1, o_readData2, o_immVal,
 endmodule
 
 
-module EX_M (clk, reset_n, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc, i_WB, i_M, i_ALURes, i_writeData, i_writeReg, i_pc);
-	input clk, reset_n;
+module EX_M (clk, reset_n, dReady, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc, i_WB, i_M, i_ALURes, i_writeData, i_writeReg, i_pc);
+	input clk, reset_n, dReady;
 
 	output reg [`WB_SIG_COUNT-1:0] o_WB;
 	output reg [`M_SIG_COUNT-1:0] o_M;
@@ -115,7 +118,7 @@ module EX_M (clk, reset_n, o_WB, o_M, o_ALURes, o_writeData, o_writeReg, o_pc, i
 			o_writeReg <= 0;
 			o_pc <= 0;
 		end
-		else begin
+		else if (dReady) begin
 			o_WB <= i_WB;
 			o_M <= i_M;
 			o_ALURes <= i_ALURes;
