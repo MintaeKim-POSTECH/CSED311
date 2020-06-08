@@ -17,10 +17,10 @@ module IF_ID (clk, reset_n, IF_flush, hazard, iReady, dReady, o_pc, o_Idata, i_p
 			o_pc <= 0;
 			o_Idata <= 16'he000;
 		end
-		// Check Stall Condition (Hazard, iReady, dReady
+		// Check Non-Stall Condition (Hazard, iReady, dReady
 		else if (hazard == 0 && iReady == 1 && dReady == 1) begin
-			// Check IF_flush: Setting Nop (opcode == 14)
 			if (IF_flush == 1) begin
+				// Check IF_flush: Setting Nop (opcode == 14)
 				o_pc <= 16'h0000;
 				o_Idata <= 16'he000; 
 			end
@@ -29,6 +29,7 @@ module IF_ID (clk, reset_n, IF_flush, hazard, iReady, dReady, o_pc, o_Idata, i_p
 				o_Idata <= i_Idata;
 			end
 		end
+		// Stall
 	end
 endmodule
 

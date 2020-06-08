@@ -108,7 +108,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	mux16_4to1 mux_PC (PCSrc, PC_next, PC_inc, PC_offset, PC_cat, PC_reg);
 
 	// PC
-	PC pc (clk, reset_n, hazard, PC_cur, PC_next);
+	PC pc (clk, reset_n, hazard, iReady, dReady, PC_cur, PC_next);
 
 	// PC Wire: Propagation
 	wire [`WORD_SIZE-1:0] PC_ID, PC_EX, PC_M, PC_WB;
@@ -161,7 +161,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// Control Propagation MUX
 	assign control_signals_propagation = control_signals[`CONT_SIG_COUNT-1:`ID_SIG_COUNT]; 
-	mux_control_2to1 mux_con (hazard, next_signals, control_signals_propagation, 19'h00000);
+	mux_control_2to1 mux_con ((hazard || !iReady || !dReady), next_signals, control_signals_propagation, 19'h00000);
 
 	// Control Propagation: Next Signals
 	assign WB_sig_ID = next_signals[(`PROPA_SIG_COUNT-1):(`PROPA_SIG_COUNT-`WB_SIG_COUNT)];
@@ -244,11 +244,11 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	pred_flush_unit pred_flush (IF_flush, opcode, funcode, isTaken);
 
 	// TODO: Implement your own Cache! (Lab6: Cache)
-	non_cache cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
-	//        cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);	
+	// non_cache cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
+	cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
 
 	// cReadM2, cWriteM2 Assignment
-	assign cReadM1 = 1;
+	assign cReadM1 = (!IF_flush);
 	assign cReadM2 = MemRead;
 	assign cWriteM2 = MemWrite;
 
@@ -266,14 +266,13 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 			if (isWWD) output_port_reg <= writeData;
 			if (isInst) num_inst_reg <= (num_inst_reg + 1);
 		end
-	end
-
-	/*
-	always @(negedge clk) begin
-		$display ("");
+		/*
+		$display ("**POSEDGE***");
 		$display ("---IF---");
 		$display ("PC_next : %h, PC_cur : %h, IF_address : %h, IF_Idata : %h", PC_next, PC_cur, data1, address1);
-		$display ("IF.Flush : %d, hazard : %d", IF_flush, hazard);
+		$display ("IF.Flush : %d, hazard : %d, iReady : %d, dReady : %d", IF_flush, hazard, iReady, dReady);
+		$display ("cReadM1 : %d, c_addr1 : %h, readM1 : %d, addr1 : %h, data1 : %h", cReadM1, c_address1, readM1, address1, data1);
+		$display ("cReadM2 : %d, cWriteM2 : %d, c_addr2 : %h, readM2 : %d, writeM2 : %d, addr2 : %h, data2 : %h", cReadM2, cWriteM2, c_address2, readM2, writeM2, address2, data2);
 		$display ("---ID---");
 		$display ("PC_ID : %h, ID_Idata : %h", PC_ID, Idata_latch);
 		$display ("rs_ID : %d, rt_ID : %d, rd_ID : %d, writeReg_ID : %d", rs_ID, rt_ID, rd_ID, writeReg_ID);
@@ -281,7 +280,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 		$display ("PCSrc : %b, RegDest : %b", PCSrc, RegDest);
 		$display ("readData1 : %h, readData2 : %h", readData1, readData2);
 		$display ("PC_offset : %h, PC_cat : %h, PC_reg : %h", PC_offset, PC_cat, PC_reg);
-		$display ("isTaken : %d, hazard : %d", isTaken, hazard);
+		$display ("isTaken : %d, hazard : %d, dReady : %d", isTaken, hazard, dReady);
 		$display ("---EX---");
 		$display ("PC_EX : %h, writeReg_EX : %d", PC_EX, writeReg_EX);
 		$display ("readData1 : %h, readData2 : %h, imm_val : %h", readData1_latch, readData2_latch, imm_val_latch);
@@ -293,6 +292,43 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 		$display ("M_address : %h, M_Mdata : %h", address2, data2);
 		$display ("MemWrite : %b, MemRead : %b", MemWrite, MemRead);
 		$display ("writeReg_candidate : %d", writeReg_M);
+		$display ("dReady : %d, WB_sig_M_stall : %b", dReady, WB_sig_M_stall);
+		$display ("---WB---");
+		$display ("PC_WB : %h, writeReg_WB_candidate : %d, writeReg_WB : %d", PC_WB, writeReg_WB_candidate, writeReg_WB);
+		$display ("num_inst : %h, isInst : %b", num_inst, isInst);
+		$display ("addr_latch : %h, Mdata_latch : %h, writeData_candidate : %h, writeData : %h", addr_latch, Mdata_latch, writeData_candidate, writeData);
+		$display ("Reg2Save : %b, RegWrite : %b, isInst : %b, isWWD : %b", Reg2Save, RegWrite, isInst, isWWD);
+		$display ("==");
+		*/
+	end
+
+	always @(negedge clk) begin
+		$display ("**NEGEDGE***");
+		$display ("---IF---");
+		$display ("PC_next : %h, PC_cur : %h, IF_address : %h, IF_Idata : %h", PC_next, PC_cur, data1, address1);
+		$display ("IF.Flush : %d, hazard : %d, iReady : %d, dReady : %d", IF_flush, hazard, iReady, dReady);
+		$display ("cReadM1 : %d, c_addr1 : %h, readM1 : %d, addr1 : %h, data1 : %h", cReadM1, c_address1, readM1, address1, data1);
+		$display ("cReadM2 : %d, cWriteM2 : %d, c_addr2 : %h, readM2 : %d, writeM2 : %d, addr2 : %h, data2 : %h", cReadM2, cWriteM2, c_address2, readM2, writeM2, address2, data2);
+		$display ("---ID---");
+		$display ("PC_ID : %h, ID_Idata : %h", PC_ID, Idata_latch);
+		$display ("rs_ID : %d, rt_ID : %d, rd_ID : %d, writeReg_ID : %d", rs_ID, rt_ID, rd_ID, writeReg_ID);
+		$display ("imm_raw : %h, imm_val : %h, target : %h", imm_raw, imm_val, target_raw);
+		$display ("PCSrc : %b, RegDest : %b", PCSrc, RegDest);
+		$display ("readData1 : %h, readData2 : %h", readData1, readData2);
+		$display ("PC_offset : %h, PC_cat : %h, PC_reg : %h", PC_offset, PC_cat, PC_reg);
+		$display ("isTaken : %d, hazard : %d, dReady : %d", isTaken, hazard, dReady);
+		$display ("---EX---");
+		$display ("PC_EX : %h, writeReg_EX : %d", PC_EX, writeReg_EX);
+		$display ("readData1 : %h, readData2 : %h, imm_val : %h", readData1_latch, readData2_latch, imm_val_latch);
+		$display ("ALUSrc : %d, ALUOp2 : %h, ALURes : %h", ALUSrc, ALUOp2, ALURes);
+		$display ("writeReg_candidate : %d", writeReg_EX);
+		$display ("---M/MEM---");
+		$display ("PC_M : %h, writeReg_M : %d", PC_M, writeReg_M);
+		$display ("readM2 : %b, writeM2 : %b, writeData_latch : %h", readM2, writeM2, writeData_latch);
+		$display ("M_address : %h, M_Mdata : %h", address2, data2);
+		$display ("MemWrite : %b, MemRead : %b", MemWrite, MemRead);
+		$display ("writeReg_candidate : %d", writeReg_M);
+		$display ("dReady : %d, WB_sig_M_stall : %b", dReady, WB_sig_M_stall);
 		$display ("---WB---");
 		$display ("PC_WB : %h, writeReg_WB_candidate : %d, writeReg_WB : %d", PC_WB, writeReg_WB_candidate, writeReg_WB);
 		$display ("num_inst : %h, isInst : %b", num_inst, isInst);
@@ -300,5 +336,5 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 		$display ("Reg2Save : %b, RegWrite : %b, isInst : %b, isWWD : %b", Reg2Save, RegWrite, isInst, isWWD);
 		$display ("==");
 	end
-	*/
+
 endmodule

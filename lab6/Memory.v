@@ -236,8 +236,14 @@ module Memory(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, 
 			end
 		else
 			begin
+				$display ("n-Memory: readM1 : %d, address1 : %h, data1 : %h, memory[address1] : %h", readM1, address1, data1, memory[address1]);
+				$display ("n-Memory: readM2 : %d, writeM2 : %d, address2 : %h, data2 : %h, memory[address2] : %h", readM2, writeM2, address2, data2, memory[address2]);
 				if(readM1)data1 <= (writeM2 & address1==address2)?data2:memory[address1];
 				if(readM2)outputData2 <= memory[address2];
 				if(writeM2)memory[address2] <= data2;															  
 			end
+	always @(negedge clk) begin
+		$display ("p-Memory: readM1 : %d, address1 : %h, data1 : %h, memory[address1] : %h", readM1, address1, data1, memory[address1]);
+		$display ("p-Memory: readM2 : %d, writeM2 : %d, address2 : %h, data2 : %h, memory[address2] : %h", readM2, writeM2, address2, data2, memory[address2]);
+	end
 endmodule

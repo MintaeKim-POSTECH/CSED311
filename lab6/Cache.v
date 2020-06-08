@@ -20,7 +20,6 @@ module non_cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, add
 	input wire cReadM1, cReadM2, cWriteM2;
 	
 	
-	
 	input [`WORD_SIZE-1:0] address1;
 	wire [`WORD_SIZE-1:0] address1;
 	output data1;
@@ -33,44 +32,54 @@ module non_cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, add
 	
 	// Register State
 	reg state1, state2;
-	
-	// Register data: Not Used in Non-Cache (Just for 0)
-	reg [`WORD_SIZE-1:0] data1_reg, data2_reg;
 
 	// Assign
 	assign m_address1 = address1;
 	assign m_address2 = address2;
 
-	assign data1 = ((mReadM1 == 1) ? 16'bz : data1_reg);
-	assign data2 = ((mReadM2 == 1) ? 16'bz : data2_reg);
-
 	initial begin
-		iReady = 0;
-		dReady = 0;
+		iReady = 1;
+		dReady = 1;
 		mReadM1 = 0;
 		mReadM2 = 0;
 		mWriteM2 = 0;
 
 		state1 = 0;
 		state2 = 0;
-
-		data1_reg = 0;
-		data2_reg = 0;
 	end
 
 	// Combinational Logic
 	always @(*) begin
-		if (state1 == 0) begin
-			mReadM1 = cReadM1;
+		if (cReadM1) begin
+			if (state1 == 0) begin
+				mReadM1 = 0;
+				iReady = 0;				
+			end
+			else if (state1 == `NON_CACHE_LATENCY - 1) begin
+				mReadM1 = cReadM1;
+				iReady = 1;
+			end
 		end
-		else if (state1 == `NON_CACHE_LATENCY - 1) begin
+		else begin
+			mReadM1 = 0;
 			iReady = 1;
 		end
 
-		if (state2 == 0) begin
-			mReadM2 = cReadM2;
+		if (cReadM2 || cWriteM2) begin
+			if (state2 == 0) begin
+				mReadM2 = 0;
+				mWriteM2 = 0;
+				dReady = 0;
+			end
+			else if (state2 == `NON_CACHE_LATENCY - 1) begin
+				mReadM2 = cReadM2;
+				mWriteM2 = cWriteM2;
+				dReady = 1;
+			end
 		end
-		else if (state2 == `NON_CACHE_LATENCY - 1) begin
+		else begin
+			mReadM2 = 0;
+			mWriteM2 = 0;
 			dReady = 1;
 		end
 	end
@@ -99,7 +108,21 @@ module non_cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, add
 		end
 	end
 
+	always @(negedge clk) begin
+		/*
+		$display ("");
+		$display ("--=Non-Cache=--");
+		$display ("iReady : %d, dReady : %d", iReady, dReady);
+		$display ("m_addr1 : %h, mReadM1 : %d, cReadM1 : %d, addr1 : %h, data1 : %h", m_address1, mReadM1, cReadM1, address1, data1);
+		$display ("m_addr2 : %h, mReadM2 : %d, mWriteM2 : %d, cReadM2 : %d, cWriteM2, addr1 : %h, data2 : %h", m_address2, mReadM2, mWriteM2, cReadM2, cWriteM2, address2, data2);
+		$display ("state1 : %d, state2 : %d", state1, state2);
+		$display ("-=Non-Cache=-");
+		$display ("");
+		*/
+	end
+
 endmodule
+
 
 // Way
 module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address, data);
@@ -215,7 +238,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 	assign data = ((wReadM1) ? w_data1 : ((wReadM2) ? w_data2 : 16'bz));
 
 	initial begin
-		ready = 0;
+		ready = 1;
 
 		wReadM1 = 0;
 		wReadM2 = 0;
@@ -244,7 +267,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 			m_address = address;
 			cacheMiss = 0;
 			evictCache = 0;
-			ready = 0;
+			ready = 1;
 		end
 
 		// I'll read / write data in the corresponding position.
@@ -350,6 +373,8 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 	always @(posedge clk) begin
 		if (!reset_n) begin
+			ready <= 1;
+
 			wReadM1 <= 0;
 			wReadM2 <= 0;
 			wWriteM1 <= 0;
@@ -362,7 +387,6 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 			evictCache <= 0;
 			
 			state <= 0;
-			
 		end
 		else begin
 			// Least Recently Used Cache
@@ -409,7 +433,7 @@ module cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, address
 	input [`WORD_SIZE-1:0] address1;
 	wire [`WORD_SIZE-1:0] address1;
 	output data1;
-	reg [`WORD_SIZE-1:0] data1;
+	wire [`WORD_SIZE-1:0] data1;
 
 	input [`WORD_SIZE-1:0] address2;
 	wire [`WORD_SIZE-1:0] address2;
@@ -420,5 +444,14 @@ module cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, address
 	// Cache Modules
 	cache_unit iCache(clk, reset_n, iReady, mReadM1,         , m_address1, cReadM1,         , address1, data1);
 	cache_unit dCache(clk, reset_n, dReady, mReadM2, mWriteM2, m_address2, cReadM2, cWriteM2, address2, data2);
+
+	/*
+	always @(negedge clk) begin
+		$display ("=Cache=");
+		$display ("PC_M : %h, writeReg_M : %d", PC_M, writeReg_M);
+		$display ("readM2 : %b, writeM2 : %b, writeData_latch : %h", readM2, writeM2, writeData_latch);
+		$display ("M_address : %h, M_Mdata : %h", address2, data2);
+	end
+	*/
 
 endmodule
