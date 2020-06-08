@@ -9,22 +9,37 @@ module cpu_TB();
 	reg reset_n;    // active-low RESET signal
 	reg clk;        // clock signal	
 	
-	wire readM1;
-	wire [`WORD_SIZE-1:0] address1;
-	wire [`WORD_SIZE-1:0] data1;
-	wire readM2;
-	wire writeM2;
-	wire [`WORD_SIZE-1:0] address2;
-	wire [`WORD_SIZE-1:0] data2;
+	wire cReadM1;
+	wire cReadM2;
+	wire cWriteM2;
+	wire mReadM1;
+	wire mReadM2;
+	wire mWriteM2;
+
+	wire [`WORD_SIZE-1:0] c_address1;
+	wire [`WORD_SIZE-1:0] m_address1;
+	wire [`WORD_SIZE-1:0] c_data1;
+	wire [`WORD_SIZE-1:0] m_data1;
+	
+	wire [`WORD_SIZE-1:0] c_address2;
+	wire [`WORD_SIZE-1:0] m_address2;
+	wire [`WORD_SIZE-1:0] c_data2;
+	wire [`WORD_SIZE-1:0] m_data2;
 
 	// for debuging purpose
 	wire [`WORD_SIZE-1:0] num_inst;		// number of instruction during execution
 	wire [`WORD_SIZE-1:0] output_port;	// this will be used for a "WWD" instruction
 	wire is_halted;				// set if the cpu is halted
 
+	wire iReady, dReady;
+
 	// instantiate the unit under test
-	cpu UUT (clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, data2, num_inst, output_port, is_halted);
-	Memory NUUT(!clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, data2);
+	cpu UUT (clk, reset_n, iReady, dReady, cReadM1, c_address1, c_data1, cReadM2, cWriteM2, c_address2, c_data2, num_inst, output_port, is_halted);
+
+	non_cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
+	// cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
+	
+	Memory NUUT(!clk, reset_n, mReadM1, m_address1, m_data1, mReadM2, mWriteM2, m_address2, m_data2);
 
 	// initialize inputs
 	initial begin

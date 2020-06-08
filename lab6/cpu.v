@@ -11,11 +11,14 @@
 `include "alu.v"
 `include "Cache.v"
 
-module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, data2, num_inst, output_port, is_halted);
+module cpu(clk, reset_n, iReady, dReady, readM1, address1, data1, readM2, writeM2, address2, data2, num_inst, output_port, is_halted);
 	input clk;
 	wire clk;
 	input reset_n;
 	wire reset_n;
+	
+	// Data Ready Wire
+	input wire iReady, dReady;
 
 	output readM1;
 	wire readM1;
@@ -27,7 +30,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire writeM2;
 	output [`WORD_SIZE-1:0] address2;
 	wire [`WORD_SIZE-1:0] address2;
-
+	
 	input [`WORD_SIZE-1:0] data1;
 	wire [`WORD_SIZE-1:0] data1;
 	inout [`WORD_SIZE-1:0] data2;
@@ -41,13 +44,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	wire is_halted;
 	
 	// TODO : Implement your pipelined CPU! (Lab 5)
-
-	// Lab 6
-	// Cache Read/Write Wire
-	wire cReadM1, cReadM2, cWriteM2;
-	// Cache Address
-	wire [`WORD_SIZE-1:0] c_address1, c_address2;
-	
 
 	// Control Wire (For ID Stage)
 	wire [`CONT_SIG_COUNT-1:0] control_signals;
@@ -97,9 +93,6 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	// Hazard Wire
 	wire hazard, IF_flush;
 	
-	// Data Ready Wire
-	wire iReady, dReady;
-	
 
 	//// IF Stage ////
 	// PCSrc MUX
@@ -117,7 +110,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 	adder pc_increment (PC_inc, PC_cur, 16'h0001);
 
 	// Instruction Memory
-	assign c_address1 = PC_cur;
+	assign address1 = PC_cur;
 
 	// IF/ID
 	wire [`WORD_SIZE-1:0] Idata_latch;
@@ -210,7 +203,7 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 					WB_sig_EX, M_sig_EX, ALURes, readData2_latch, writeReg_EX, PC_EX);
 
 	//// M (MEM) Stage ////
-	assign c_address2 = ALURes_latch;
+	assign address2 = ALURes_latch;
 	assign data2 = ((readM2 == 1) ? 16'bz : writeData_latch);
 
 	// M/WB
@@ -245,12 +238,12 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 
 	// TODO: Implement your own Cache! (Lab6: Cache)
 	// non_cache cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
-	cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
+	// cache cache(clk, reset_n, iReady, dReady, address1, readM1, cReadM1, c_address1, data1, address2, readM2, writeM2, cReadM2, cWriteM2, c_address2, data2);
 
 	// cReadM2, cWriteM2 Assignment
-	assign cReadM1 = (!IF_flush);
-	assign cReadM2 = MemRead;
-	assign cWriteM2 = MemWrite;
+	assign readM1 = (!IF_flush);
+	assign readM2 = MemRead;
+	assign writeM2 = MemWrite;
 
 	initial begin // Initial Logic
 		num_inst_reg = 0;
@@ -307,21 +300,23 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 		$display ("---IF---");
 		$display ("PC_next : %h, PC_cur : %h, IF_address : %h, IF_Idata : %h", PC_next, PC_cur, data1, address1);
 		$display ("IF.Flush : %d, hazard : %d, iReady : %d, dReady : %d", IF_flush, hazard, iReady, dReady);
-		$display ("cReadM1 : %d, c_addr1 : %h, readM1 : %d, addr1 : %h, data1 : %h", cReadM1, c_address1, readM1, address1, data1);
-		$display ("cReadM2 : %d, cWriteM2 : %d, c_addr2 : %h, readM2 : %d, writeM2 : %d, addr2 : %h, data2 : %h", cReadM2, cWriteM2, c_address2, readM2, writeM2, address2, data2);
 		$display ("---ID---");
 		$display ("PC_ID : %h, ID_Idata : %h", PC_ID, Idata_latch);
+		/*
 		$display ("rs_ID : %d, rt_ID : %d, rd_ID : %d, writeReg_ID : %d", rs_ID, rt_ID, rd_ID, writeReg_ID);
 		$display ("imm_raw : %h, imm_val : %h, target : %h", imm_raw, imm_val, target_raw);
 		$display ("PCSrc : %b, RegDest : %b", PCSrc, RegDest);
 		$display ("readData1 : %h, readData2 : %h", readData1, readData2);
 		$display ("PC_offset : %h, PC_cat : %h, PC_reg : %h", PC_offset, PC_cat, PC_reg);
+		*/
 		$display ("isTaken : %d, hazard : %d, dReady : %d", isTaken, hazard, dReady);
 		$display ("---EX---");
 		$display ("PC_EX : %h, writeReg_EX : %d", PC_EX, writeReg_EX);
+		/*
 		$display ("readData1 : %h, readData2 : %h, imm_val : %h", readData1_latch, readData2_latch, imm_val_latch);
 		$display ("ALUSrc : %d, ALUOp2 : %h, ALURes : %h", ALUSrc, ALUOp2, ALURes);
 		$display ("writeReg_candidate : %d", writeReg_EX);
+		*/
 		$display ("---M/MEM---");
 		$display ("PC_M : %h, writeReg_M : %d", PC_M, writeReg_M);
 		$display ("readM2 : %b, writeM2 : %b, writeData_latch : %h", readM2, writeM2, writeData_latch);
@@ -329,11 +324,13 @@ module cpu(clk, reset_n, readM1, address1, data1, readM2, writeM2, address2, dat
 		$display ("MemWrite : %b, MemRead : %b", MemWrite, MemRead);
 		$display ("writeReg_candidate : %d", writeReg_M);
 		$display ("dReady : %d, WB_sig_M_stall : %b", dReady, WB_sig_M_stall);
+		/*
 		$display ("---WB---");
 		$display ("PC_WB : %h, writeReg_WB_candidate : %d, writeReg_WB : %d", PC_WB, writeReg_WB_candidate, writeReg_WB);
 		$display ("num_inst : %h, isInst : %b", num_inst, isInst);
 		$display ("addr_latch : %h, Mdata_latch : %h, writeData_candidate : %h, writeData : %h", addr_latch, Mdata_latch, writeData_candidate, writeData);
 		$display ("Reg2Save : %b, RegWrite : %b, isInst : %b, isWWD : %b", Reg2Save, RegWrite, isInst, isWWD);
+		*/
 		$display ("==");
 	end
 

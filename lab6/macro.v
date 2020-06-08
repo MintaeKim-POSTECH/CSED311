@@ -18,6 +18,7 @@
 `define TAG_BITS          13
 `define INDEX_BITS         1
 `define OFFSET_BITS        2 // 4 Words Per Line, 2 Bits Needed
+`define BLOCK_COUNT        4
 
 `define LATENCY_BITS       3 // ~7 Cycles Latency
 `define NON_CACHE_LATENCY  2
