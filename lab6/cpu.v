@@ -333,5 +333,4 @@ module cpu(clk, reset_n, iReady, dReady, readM1, address1, data1, readM2, writeM
 		*/
 		$display ("==");
 	end
-
 endmodule

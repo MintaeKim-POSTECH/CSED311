@@ -122,7 +122,7 @@ endmodule
 
 
 // Way
-module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address, data);
+module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, w_address, data);
 	input clk, reset_n;
 
 	output wire w_valid;
@@ -132,7 +132,7 @@ module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address,
 
 	input wWriteM;
 
-	input wire [`WORD_SIZE-1:0] address;
+	input wire [`WORD_SIZE-1:0] w_address;
 	inout wire [`WORD_SIZE-1:0] data;
 
 	reg [`INDEX_PER_CACHE-1:0] valid_arr;
@@ -147,9 +147,9 @@ module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address,
 	wire [`OFFSET_BITS-1:0] c_offset;
 	wire c_index;
 
-	assign c_tag = address[`WORD_SIZE-1 : `WORD_SIZE-`TAG_BITS];
-	assign c_index = address[`OFFSET_BITS];
-	assign c_offset = address[`OFFSET_BITS-1:0];
+	assign c_tag = w_address[`WORD_SIZE-1 : `WORD_SIZE-`TAG_BITS];
+	assign c_index = w_address[`OFFSET_BITS];
+	assign c_offset = w_address[`OFFSET_BITS-1:0];
 
 	// Fetch Cache Data
 	assign w_valid = valid_arr[c_index];
@@ -187,35 +187,38 @@ module way_unit(clk, reset_n, w_valid, w_tag, w_data, w_dirty, wWriteM, address,
 				valid_arr[c_index] <= 1;
 				tag_arr[c_index] <= c_tag;
 				data_arr[c_index][c_offset] <= data;
-				dirty_arr[c_index][c_offset] <= 1;
+
+				if (tag_arr[c_index] == c_tag) dirty_arr[c_index][c_offset] <= 1;
+				else dirty_arr[c_index][c_offset] <= 0;
 			end
 		end
 	end
 
 	always @(negedge clk) begin
-		/*
 		$display (" == Neg: Way ==");
 		$display ("%h %h %h %h", data_arr[0][0], data_arr[0][1], data_arr[0][2], data_arr[0][3]);
 		$display ("%h %h %h %h", data_arr[1][0], data_arr[1][1], data_arr[1][2], data_arr[1][3]);
 		$display (" == Neg: Way ==");
-		*/
 	end
 	
 endmodule
 
 // Cache
-module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWriteM, address, data);
+module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, m_data, cReadM, cWriteM, c_address, c_data);
 	input clk, reset_n;
 
 	output reg ready;
 
 	output reg mReadM, mWriteM;
-	output reg [`WORD_SIZE-1:0] m_address;
-
 	input cReadM, cWriteM;
 
-	input wire [`WORD_SIZE-1:0] address;
-	inout wire [`WORD_SIZE-1:0] data;
+	output reg [`WORD_SIZE-1:0] m_address;
+	input wire [`WORD_SIZE-1:0] c_address;
+
+	inout wire [`WORD_SIZE-1:0] m_data;
+	inout wire [`WORD_SIZE-1:0] c_data;
+
+	wire [`WORD_SIZE-1:0] data1, data2; // TODO: Assignment
 
 	wire w_valid1, w_valid2;
 	wire [`TAG_BITS-1:0] w_tag1, w_tag2;
@@ -231,24 +234,28 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 	wire [`OFFSET_BITS-1:0] c_offset;
 	wire c_index;
 
-	assign c_tag = address[`WORD_SIZE-1 : `WORD_SIZE-`TAG_BITS];
-	assign c_index = address[`OFFSET_BITS];
-	assign c_offset = address[`OFFSET_BITS-1:0];
+	assign c_tag = c_address[`WORD_SIZE-1 : `WORD_SIZE-`TAG_BITS];
+	assign c_index = c_address[`OFFSET_BITS];
+	assign c_offset = c_address[`OFFSET_BITS-1:0];
 
 	// Way
-	way_unit way1(clk, reset_n, w_valid1, w_tag1, w_data1, w_dirty1, wWriteM1, w_address, data);
-	way_unit way2(clk, reset_n, w_valid2, w_tag2, w_data2, w_dirty2, wWriteM2, w_address, data);
+	way_unit way1(clk, reset_n, w_valid1, w_tag1, w_data1, w_dirty1, wWriteM1, w_address, data1);
+	way_unit way2(clk, reset_n, w_valid2, w_tag2, w_data2, w_dirty2, wWriteM2, w_address, data2);
 
 	// Register
 	reg [`INDEX_PER_CACHE-1:0] lru_cache;
-	reg cacheMiss, evictCache;
+	reg cacheMiss, writeWay;
 
 	// State
 	reg [`LATENCY_BITS-1:0] state;
 	reg state_negedge;
 
 	// Assignment
-	assign data = ((wReadM1) ? w_data1 : ((wReadM2) ? w_data2 : 16'bz));
+	assign data1 = ((wReadM1) ? w_data1 : ((mReadM) ? m_data : c_data));
+	assign data2 = ((wReadM2) ? w_data2 : ((mReadM) ? m_data : c_data));
+
+	assign c_data = ((cReadM) ? ((writeWay == 0) ? w_data1 : w_data2) : 16'bz);
+	assign m_data = ((mReadM) ? 16'bz : ((writeWay == 0) ? w_data1 : w_data2));
 
 	initial begin
 		ready = 1;
@@ -263,7 +270,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 		w_address = 0;
 		m_address = 0;
 		cacheMiss = 0;
-		evictCache = 0;
+		writeWay = 0;
 		
 		lru_cache = 0;
 
@@ -282,10 +289,10 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 		if (state == 0) begin
 			ready = 1; // Basically Ready = 1
 
-			w_address = address;
-			m_address = address;
+			w_address = c_address;
+			m_address = c_address;
 			cacheMiss = 0;
-			evictCache = 0;
+			writeWay = 0;
 		end
 
 		// I'll read / write data in the corresponding position.
@@ -294,6 +301,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 			if (cacheMiss == 0) begin
 				// Cache Hit
 				if (w_valid1 == 1 && w_tag1 == c_tag) begin
+					writeWay = 0;
 					if (cWriteM == 1) begin
 						wWriteM1 = 1;
 					end
@@ -302,6 +310,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 					end
 				end
 				else if (w_valid2 == 1 && w_tag2 == c_tag) begin
+					writeWay = 1;
 					if (cWriteM == 1) begin
 						wWriteM2 = 1;
 					end
@@ -317,10 +326,10 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 					// Select Non-Valid Cache,
 					// IF there's no Non-Valid Cache, than choose LRU Cache
 					if ((w_valid1 == 0 && w_valid2 == 1) || (lru_cache[c_index] == 1)) begin
-						evictCache = 0;
+						writeWay = 0;
 					end
 					else begin
-						evictCache = 1;
+						writeWay = 1;
 					end
 				end
 			end
@@ -328,10 +337,10 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 				// Write-back: Check if corresponding block is dirty
 				// Comparison of state (State 1~4)
 				if (state < `CACHE_HIT_LATENCY + `CACHE_MISS_LATENCY - 2 && state >= `CACHE_HIT_LATENCY + `CACHE_MISS_LATENCY - `WORD_PER_LINE - 2) begin
-					w_address = (address & 16'hfffc) + (state - `CACHE_HIT_LATENCY - `CACHE_MISS_LATENCY + `WORD_PER_LINE + 2);
+					w_address = (c_address & 16'hfffc) + (state - `CACHE_HIT_LATENCY - `CACHE_MISS_LATENCY + `WORD_PER_LINE + 2);
 					
 					// Way 1
-					if (evictCache == 0) begin
+					if (writeWay == 0) begin
 						// Write-back: Check if corresponding block is dirty or not. (Need negedge to fetch new data)
 						if (w_dirty1 == 1) begin
 							if (state_negedge == 0) begin // Negedge: Cache -> Memory	
@@ -403,10 +412,10 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 				// Updating Information (State 5) (Way is updated in Posedge)
 				if (state == `CACHE_HIT_LATENCY + `CACHE_MISS_LATENCY - 2) begin
-					w_address = address;
+					w_address = c_address;
 
 					if (cWriteM == 1) begin
-						if (evictCache == 0) wWriteM1 = 1;
+						if (writeWay == 0) wWriteM1 = 1;
 						else wWriteM2 = 1;
 					end
 					
@@ -415,9 +424,9 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 				// Setting status as ready (State 6)
 				if (state == `CACHE_HIT_LATENCY + `CACHE_MISS_LATENCY - 1) begin
-					w_address = address;
+					w_address = c_address;
 
-					if (evictCache == 0) wReadM1 = 1;
+					if (writeWay == 0) wReadM1 = 1;
 					else wReadM2 = 1;
 					
 					ready = 1;
@@ -439,7 +448,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 			lru_cache <= 0;
 			cacheMiss <= 0;
-			evictCache <= 0;
+			writeWay <= 0;
 			w_address <= 0;
 			m_address <= 0;
 			
@@ -462,19 +471,18 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 			state_negedge <= 0;
 		end
 
-/*
 		$display ("== Posedge ==");
-		$display ("address : %h, data : %h, cReadM : %d, cWriteM : %d", address, data, cReadM, cWriteM);
+		$display ("c_address : %h, c_data : %h, cReadM : %d, cWriteM : %d", c_address, c_data, cReadM, cWriteM);
 		$display ("c_tag : %h, c_index : %d, c_offset : %d", c_tag, c_index, c_offset);
-		$display ("m_addrs : %h, mReadM : %d, mWriteM : %d", m_address, mReadM, mWriteM);
+		$display ("m_addrs : %h, m_data : %h, mReadM : %d, mWriteM : %d", m_address, m_data, mReadM, mWriteM);
+		$display ("data1 : %h, data2 : %h", data1, data2);
 		$display ("----");
-		$display ("State: %d, State_Negedge : %d, ready : %d, cacheMiss : %d, evictCache : %d", state, state_negedge, ready, cacheMiss, evictCache);
+		$display ("State: %d, State_Negedge : %d, ready : %d, cacheMiss : %d, writeWay : %d", state, state_negedge, ready, cacheMiss, writeWay);
 		$display ("w_addrs : %h, wReadM1 : %d, wWriteM1 : %d, wReadM2 : %d, wWriteM2 : %d", w_address, wReadM1, wWriteM1, wReadM2, wWriteM2);
 		$display ("w_valid1 : %b, w_dirty1 : %b, w_tag1 : %h, w_data1 : %h", w_valid1, w_dirty1, w_tag1, w_data1);
 		$display ("w_valid2 : %b, w_dirty2 : %b, w_tag2 : %h, w_data2 : %h", w_valid2, w_dirty2, w_tag2, w_data2);
 		$display ("== Posedge ==");
 		$display ("");
-		*/
 	end
 
 	always @(negedge clk) begin
@@ -490,7 +498,7 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 
 			lru_cache <= 0;
 			cacheMiss <= 0;
-			evictCache <= 0;
+			writeWay <= 0;
 			w_address <= 0;
 			m_address <= 0;
 			
@@ -498,25 +506,24 @@ module cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWrit
 			state_negedge <= 0;
 		end
 		else state_negedge <= 1;
-		/*
+
 		$display ("== Negedge ==");
-		$display ("address : %h, data : %h, cReadM : %d, cWriteM : %d", address, data, cReadM, cWriteM);
+		$display ("c_address : %h, c_data : %h, cReadM : %d, cWriteM : %d", c_address, c_data, cReadM, cWriteM);
 		$display ("c_tag : %h, c_index : %d, c_offset : %d", c_tag, c_index, c_offset);
-		$display ("m_addrs : %h, mReadM : %d, mWriteM : %d", m_address, mReadM, mWriteM);
+		$display ("m_addrs : %h, m_data : %h, mReadM : %d, mWriteM : %d", m_address, m_data, mReadM, mWriteM);
+		$display ("data1 : %h, data2 : %h", data1, data2);
 		$display ("----");
-		$display ("State: %d, State_Negedge : %d, ready : %d, cacheMiss : %d, evictCache : %d", state, state_negedge, ready, cacheMiss, evictCache);
+		$display ("State: %d, State_Negedge : %d, ready : %d, cacheMiss : %d, writeWay : %d", state, state_negedge, ready, cacheMiss, writeWay);
 		$display ("w_addrs : %h, wReadM1 : %d, wWriteM1 : %d, wReadM2 : %d, wWriteM2 : %d", w_address, wReadM1, wWriteM1, wReadM2, wWriteM2);
 		$display ("w_valid1 : %b, w_dirty1 : %b, w_tag1 : %h, w_data1 : %h", w_valid1, w_dirty1, w_tag1, w_data1);
 		$display ("w_valid2 : %b, w_dirty2 : %b, w_tag2 : %h, w_data2 : %h", w_valid2, w_dirty2, w_tag2, w_data2);
 		$display ("== Negedge ==");
 		$display ("");
-		*/
 	end
 
 endmodule
 
-/*
-module cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, address1, c_data1, m_address2, mReadM2, mWriteM2, cReadM2, cWriteM2, address2, c_data2);
+module cache (clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
 	input clk;
 	wire clk;
 	input reset_n;
@@ -525,30 +532,26 @@ module cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, address
 	// True if iData or dData is ready
 	output wire iReady, dReady;
 
-	// Memory mReadM1, mReadM2, mWriteM2
-	output wire mReadM1, mReadM2, mWriteM2;
-
-	// Cache
-	input wire cReadM1, cReadM2, cWriteM2;
-	
 	// Memory Access Address
-	output wire [`WORD_SIZE-1:0] m_address1, m_address2;
+	input [`WORD_SIZE-1:0] c_address1, c_address2;
+	output [`WORD_SIZE-1:0] m_address1, m_address2;
 
-	input [`WORD_SIZE-1:0] address1;
-	wire [`WORD_SIZE-1:0] address1;
-	output c_data1;
-	wire [`WORD_SIZE-1:0] c_data1;
+	// Signal
+	input wire cReadM1, cReadM2, cWriteM2;
+	output wire mReadM1, mReadM2, mWriteM2;
+	
+	// Data
+	output wire [`WORD_SIZE-1:0] c_data1;
+	input wire [`WORD_SIZE-1:0] m_data1;
 
-	input [`WORD_SIZE-1:0] address2;
-	wire [`WORD_SIZE-1:0] address2;
-	inout c_data2;
-	wire [`WORD_SIZE-1:0] c_data2;
+	inout wire [`WORD_SIZE-1:0] c_data2;
+	inout wire [`WORD_SIZE-1:0] m_data2;
+
 	
 	// cache_unit(clk, reset_n, ready, mReadM, mWriteM, m_address, cReadM, cWriteM, address, data)
 	// Cache Modules
-	cache_unit iCache(clk, reset_n, iReady, mReadM1,         , m_address1, cReadM1,     1'b0, address1, data1);
-	cache_unit dCache(clk, reset_n, dReady, mReadM2, mWriteM2, m_address2, cReadM2, cWriteM2, address2, data2);
-*/
+	cache_unit iCache(clk, reset_n, iReady, mReadM1,         , m_address1, m_data1, cReadM1,     1'b0, c_address1, c_data1);
+	cache_unit dCache(clk, reset_n, dReady, mReadM2, mWriteM2, m_address2, m_data2, cReadM2, cWriteM2, c_address2, c_data2);
 	/*
 	always @(negedge clk) begin
 		$display ("=Cache=");
@@ -557,6 +560,4 @@ module cache(clk, reset_n, iReady, dReady, m_address1, mReadM1, cReadM1, address
 		$display ("M_address : %h, M_Mdata : %h", address2, data2);
 	end
 	*/
-/*
 endmodule
-*/

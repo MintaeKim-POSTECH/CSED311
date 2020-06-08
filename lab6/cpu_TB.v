@@ -36,8 +36,8 @@ module cpu_TB();
 	// instantiate the unit under test
 	cpu UUT (clk, reset_n, iReady, dReady, cReadM1, c_address1, c_data1, cReadM2, cWriteM2, c_address2, c_data2, num_inst, output_port, is_halted);
 
-	non_cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
-	// cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
+	// non_cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
+	cache cache(clk, reset_n, iReady, dReady, mReadM1, mReadM2, mWriteM2, m_address1, m_address2, m_data1, m_data2, cReadM1, cReadM2, cWriteM2, c_address1, c_address2, c_data1, c_data2);
 	
 	Memory NUUT(!clk, reset_n, mReadM1, m_address1, m_data1, mReadM2, mWriteM2, m_address2, m_data2);
 
